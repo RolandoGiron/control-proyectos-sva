@@ -6,11 +6,12 @@ import Input from '../common/Input';
 import Textarea from '../common/Textarea';
 import Button from '../common/Button';
 import EmojiPicker from '../common/EmojiPicker';
+import AreaSelect from '../common/AreaSelect';
 import { Project } from '../../types/api';
 
 interface ProjectFormProps {
   project?: Project; // Si existe, es modo edición
-  onSubmit: (data: { name: string; description?: string; emoji_icon?: string }) => Promise<void>;
+  onSubmit: (data: { name: string; description?: string; emoji_icon?: string; area_id?: string | null }) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -23,6 +24,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     name: project?.name || '',
     description: project?.description || '',
     emoji_icon: project?.emoji_icon || '📁',
+    area_id: project?.area_id || null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -33,6 +35,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         name: project.name,
         description: project.description || '',
         emoji_icon: project.emoji_icon || '📁',
+        area_id: project.area_id || null,
       });
     }
   }, [project]);
@@ -63,6 +66,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         emoji_icon: formData.emoji_icon,
+        area_id: formData.area_id || null,
       });
     } catch (error: any) {
       const errorMsg =
@@ -109,6 +113,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           setFormData({ ...formData, description: e.target.value })
         }
         helperText="Opcional"
+      />
+
+      {/* Área */}
+      <AreaSelect
+        label="Área"
+        value={formData.area_id}
+        onChange={(areaId) => setFormData({ ...formData, area_id: areaId })}
+        allowNull={true}
       />
 
       {/* Botones de acción */}

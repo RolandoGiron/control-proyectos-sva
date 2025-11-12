@@ -8,11 +8,15 @@ import Button from '../components/common/Button';
 import ProjectForm from '../components/Projects/ProjectForm';
 import ProjectCard from '../components/Projects/ProjectCard';
 import projectService from '../services/projectService';
-import { ProjectWithStats } from '../types/api';
+import areaService from '../services/areaService';
+import { ProjectWithStats, Area } from '../types/api';
 import { FolderKanban, Plus, Loader } from 'lucide-react';
 
 const Projects: React.FC = () => {
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<ProjectWithStats[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -20,10 +24,22 @@ const Projects: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<ProjectWithStats | null>(null);
   const [error, setError] = useState<string>('');
 
-  // Cargar proyectos al montar el componente
+  // Cargar proyectos y áreas al montar el componente
   useEffect(() => {
     loadProjects();
+    loadAreas();
   }, []);
+
+  // Filtrar proyectos cuando cambia el área seleccionada
+  useEffect(() => {
+    if (selectedAreaId === 'all') {
+      setFilteredProjects(projects);
+    } else if (selectedAreaId === 'none') {
+      setFilteredProjects(projects.filter((p) => !p.area_id));
+    } else {
+      setFilteredProjects(projects.filter((p) => p.area_id === selectedAreaId));
+    }
+  }, [selectedAreaId, projects]);
 
   const loadProjects = async () => {
     try {
@@ -38,10 +54,20 @@ const Projects: React.FC = () => {
     }
   };
 
+  const loadAreas = async () => {
+    try {
+      const data = await areaService.getAll(true); // Solo áreas activas
+      setAreas(data);
+    } catch (err: any) {
+      console.error('Error loading areas:', err);
+    }
+  };
+
   const handleCreate = async (data: {
     name: string;
     description?: string;
     emoji_icon?: string;
+    area_id?: string | null;
   }) => {
     await projectService.create(data);
     await loadProjects();
@@ -52,6 +78,7 @@ const Projects: React.FC = () => {
     name: string;
     description?: string;
     emoji_icon?: string;
+    area_id?: string | null;
   }) => {
     if (!selectedProject) return;
     await projectService.update(selectedProject.id, data);
@@ -122,6 +149,28 @@ const Projects: React.FC = () => {
           </div>
         )}
 
+        {/* Area Filter */}
+        {areas.length > 0 && (
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">
+              Filtrar por área:
+            </label>
+            <select
+              value={selectedAreaId}
+              onChange={(e) => setSelectedAreaId(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Todas las áreas</option>
+              <option value="none">Sin área</option>
+              {areas.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.icon} {area.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Loading state */}
         {loading && (
           <div className="flex items-center justify-center py-12">
@@ -130,9 +179,9 @@ const Projects: React.FC = () => {
         )}
 
         {/* Projects grid */}
-        {!loading && projects.length > 0 && (
+        {!loading && filteredProjects.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+            {filteredProjects.map((project) => (
               <ProjectCard
                 key={project.id}
                 project={project}
@@ -144,7 +193,22 @@ const Projects: React.FC = () => {
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty state - No projects match filter */}
+        {!loading && projects.length > 0 && filteredProjects.length === 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-12">
+            <div className="text-center">
+              <FolderKanban className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                No hay proyectos en esta área
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Cambia el filtro para ver proyectos de otras áreas
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Empty state - No projects at all */}
         {!loading && projects.length === 0 && (
           <div className="bg-white rounded-lg shadow-sm p-12">
             <div className="text-center">

@@ -88,6 +88,14 @@ const authService = {
   changePassword: async (data: ChangePasswordRequest): Promise<void> => {
     await apiClient.post('/users/me/change-password', data);
   },
+
+  /**
+   * Obtener lista de usuarios
+   */
+  getUsers: async (): Promise<User[]> => {
+    const response = await apiClient.get<User[]>('/users');
+    return response.data;
+  },
 };
 
 export default authService;

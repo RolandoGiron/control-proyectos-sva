@@ -59,6 +59,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         password_hash=hashed_password,
         full_name=user_data.full_name,
         phone_number=user_data.phone_number,
+        role=user_data.role,
+        area_id=user_data.area_id,
         is_active=True,
     )
 
@@ -114,6 +116,8 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             "full_name": user.full_name,
             "phone_number": user.phone_number,
             "telegram_chat_id": user.telegram_chat_id,
+            "role": user.role,
+            "area_id": user.area_id,
             "is_active": user.is_active,
             "created_at": user.created_at,
             "updated_at": user.updated_at,

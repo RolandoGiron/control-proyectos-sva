@@ -19,6 +19,7 @@ class Project(Base):
     description = Column(Text, nullable=True)
     emoji_icon = Column(String(10), default="📁", nullable=True)
     owner_id = Column(String(36), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
+    area_id = Column(String(36), ForeignKey("areas.id", ondelete="SET NULL"), nullable=True, index=True)
     is_archived = Column(Boolean, default=False, nullable=False, index=True)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(
@@ -27,6 +28,7 @@ class Project(Base):
 
     # Relaciones
     owner = relationship("User", back_populates="owned_projects", foreign_keys=[owner_id])
+    area = relationship("Area", back_populates="projects")
     tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
 
     def __repr__(self):

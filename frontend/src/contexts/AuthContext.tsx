@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const register = async (data: RegisterRequest): Promise<void> => {
-    const newUser = await authService.register(data);
+    await authService.register(data);
     // Auto-login después del registro
     await login({ email: data.email, password: data.password });
   };

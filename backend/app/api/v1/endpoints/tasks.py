@@ -43,13 +43,18 @@ def list_tasks(
     Returns:
         Lista de tareas
     """
-    # Query base: tareas de proyectos del usuario O tareas asignadas al usuario
-    query = db.query(Task).join(Project).filter(
-        or_(
-            Project.owner_id == current_user.id,
-            Task.responsible_id == current_user.id
+    # Query base:
+    # - Administradores ven todas las tareas
+    # - Otros usuarios ven solo tareas de sus proyectos O tareas asignadas a ellos
+    query = db.query(Task).join(Project)
+
+    if current_user.role != "administrador":
+        query = query.filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Task.responsible_id == current_user.id
+            )
         )
-    )
 
     # Aplicar filtros
     if project_id:
@@ -85,16 +90,23 @@ def create_task(
     Raises:
         HTTPException: Si el proyecto no existe o no pertenece al usuario
     """
-    # Verificar que el proyecto existe y pertenece al usuario
-    project = db.query(Project).filter(
-        Project.id == task_data.project_id,
-        Project.owner_id == current_user.id
-    ).first()
+    # Verificar que el proyecto existe
+    # Los administradores pueden crear tareas en cualquier proyecto
+    # Los demás usuarios solo en sus propios proyectos
+    if current_user.role == "administrador":
+        # Administradores: solo verificar que el proyecto existe
+        project = db.query(Project).filter(Project.id == task_data.project_id).first()
+    else:
+        # Otros usuarios: verificar que el proyecto les pertenece
+        project = db.query(Project).filter(
+            Project.id == task_data.project_id,
+            Project.owner_id == current_user.id
+        ).first()
 
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proyecto no encontrado"
+            detail="Proyecto no encontrado o no tienes permiso para crear tareas en él"
         )
 
     # Verificar que el responsable existe (si se especificó)
@@ -148,13 +160,19 @@ def get_task(
     Raises:
         HTTPException: Si la tarea no existe o el usuario no tiene acceso
     """
-    task = db.query(Task).join(Project).filter(
-        Task.id == task_id,
-        or_(
-            Project.owner_id == current_user.id,
-            Task.responsible_id == current_user.id
+    # Los administradores pueden ver cualquier tarea
+    # Otros usuarios solo ven tareas de sus proyectos o asignadas a ellos
+    query = db.query(Task).join(Project).filter(Task.id == task_id)
+
+    if current_user.role != "administrador":
+        query = query.filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Task.responsible_id == current_user.id
+            )
         )
-    ).first()
+
+    task = query.first()
 
     if not task:
         raise HTTPException(
@@ -187,15 +205,19 @@ def update_task(
     Raises:
         HTTPException: Si la tarea no existe o el usuario no es el dueño del proyecto
     """
-    task = db.query(Task).join(Project).filter(
-        Task.id == task_id,
-        Project.owner_id == current_user.id  # Solo el dueño del proyecto puede editar
-    ).first()
+    # Los administradores pueden editar cualquier tarea
+    # Otros usuarios solo pueden editar tareas de sus proyectos
+    query = db.query(Task).join(Project).filter(Task.id == task_id)
+
+    if current_user.role != "administrador":
+        query = query.filter(Project.owner_id == current_user.id)
+
+    task = query.first()
 
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarea no encontrada"
+            detail="Tarea no encontrada o no tienes permiso para editarla"
         )
 
     # Actualizar campos - usar exclude_unset para distinguir entre None enviado vs campo no enviado
@@ -244,7 +266,7 @@ def update_task_status(
     db: Session = Depends(get_db),
 ):
     """
-    Actualizar solo el estado de la tarea (responsable o dueño)
+    Actualizar solo el estado de la tarea (responsable, dueño o administrador)
 
     Args:
         task_id: ID de la tarea
@@ -258,13 +280,19 @@ def update_task_status(
     Raises:
         HTTPException: Si la tarea no existe o el usuario no tiene permiso
     """
-    task = db.query(Task).join(Project).filter(
-        Task.id == task_id,
-        or_(
-            Project.owner_id == current_user.id,
-            Task.responsible_id == current_user.id
+    # Los administradores pueden cambiar el estado de cualquier tarea
+    # Otros usuarios solo pueden cambiar tareas de sus proyectos o asignadas a ellos
+    query = db.query(Task).join(Project).filter(Task.id == task_id)
+
+    if current_user.role != "administrador":
+        query = query.filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Task.responsible_id == current_user.id
+            )
         )
-    ).first()
+
+    task = query.first()
 
     if not task:
         raise HTTPException(
@@ -309,13 +337,19 @@ def complete_task(
     Raises:
         HTTPException: Si la tarea no existe o el usuario no tiene permiso
     """
-    task = db.query(Task).join(Project).filter(
-        Task.id == task_id,
-        or_(
-            Project.owner_id == current_user.id,
-            Task.responsible_id == current_user.id
+    # Los administradores pueden completar cualquier tarea
+    # Otros usuarios solo pueden completar tareas de sus proyectos o asignadas a ellos
+    query = db.query(Task).join(Project).filter(Task.id == task_id)
+
+    if current_user.role != "administrador":
+        query = query.filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Task.responsible_id == current_user.id
+            )
         )
-    ).first()
+
+    task = query.first()
 
     if not task:
         raise HTTPException(
@@ -339,7 +373,7 @@ def delete_task(
     db: Session = Depends(get_db),
 ):
     """
-    Eliminar tarea (solo dueño del proyecto)
+    Eliminar tarea (solo dueño del proyecto o administrador)
 
     Args:
         task_id: ID de la tarea
@@ -349,15 +383,19 @@ def delete_task(
     Raises:
         HTTPException: Si la tarea no existe o el usuario no es el dueño
     """
-    task = db.query(Task).join(Project).filter(
-        Task.id == task_id,
-        Project.owner_id == current_user.id
-    ).first()
+    # Los administradores pueden eliminar cualquier tarea
+    # Otros usuarios solo pueden eliminar tareas de sus proyectos
+    query = db.query(Task).join(Project).filter(Task.id == task_id)
+
+    if current_user.role != "administrador":
+        query = query.filter(Project.owner_id == current_user.id)
+
+    task = query.first()
 
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarea no encontrada"
+            detail="Tarea no encontrada o no tienes permiso para eliminarla"
         )
 
     db.delete(task)

@@ -114,56 +114,106 @@ services:
       - backend
 
   # ==========================================================================
-  # Celery Worker (Opcional - Fase 4)
-  # Descomentrar cuando se implemente el sistema de recordatorios
+  # Telegram Bot (Fase 3)
   # ==========================================================================
-  # celery_worker:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: sva_celery_worker
-  #   restart: unless-stopped
-  #   command: celery -A app.workers.celery_app worker --loglevel=info
-  #   environment:
-  #     MYSQL_HOST: mysql
-  #     MYSQL_PORT: 3306
-  #     MYSQL_USER: ${MYSQL_USER:-sva_user}
-  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sva_password_change_me}
-  #     MYSQL_DATABASE: ${MYSQL_DATABASE:-proyectos_sva_db}
-  #     REDIS_HOST: redis
-  #     REDIS_PORT: 6379
-  #     SECRET_KEY: ${SECRET_KEY:-change_this_secret_key_in_production}
-  #     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-your_telegram_bot_token}
-  #   volumes:
-  #     - ./backend:/app
-  #   networks:
-  #     - sva_network
-  #   depends_on:
-  #     - mysql
-  #     - redis
+  telegram_bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sva_telegram_bot
+    restart: unless-stopped
+    command: python run_bot.py
+    environment:
+      # Database
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-sva_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sva_password_change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-proyectos_sva_db}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # JWT
+      SECRET_KEY: ${SECRET_KEY:-change_this_secret_key_in_production}
+
+      # Telegram
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-your_telegram_bot_token}
+
+      # App
+      DEBUG: ${DEBUG:-True}
+    volumes:
+      - ./backend:/app
+    networks:
+      - sva_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # ==========================================================================
-  # Celery Beat Scheduler (Opcional - Fase 4)
+  # Celery Worker (Fase 4 - Sistema de Recordatorios)
   # ==========================================================================
-  # celery_beat:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: sva_celery_beat
-  #   restart: unless-stopped
-  #   command: celery -A app.workers.celery_app beat --loglevel=info
-  #   environment:
-  #     MYSQL_HOST: mysql
-  #     REDIS_HOST: redis
-  #     SECRET_KEY: ${SECRET_KEY:-change_this_secret_key_in_production}
-  #     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-your_telegram_bot_token}
-  #   volumes:
-  #     - ./backend:/app
-  #   networks:
-  #     - sva_network
-  #   depends_on:
-  #     - mysql
-  #     - redis
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sva_celery_worker
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-sva_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sva_password_change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-proyectos_sva_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SECRET_KEY: ${SECRET_KEY:-change_this_secret_key_in_production}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-your_telegram_bot_token}
+      DEBUG: ${DEBUG:-True}
+    volumes:
+      - ./backend:/app
+    networks:
+      - sva_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ==========================================================================
+  # Celery Beat Scheduler (Fase 4 - Tareas Programadas)
+  # ==========================================================================
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sva_celery_beat
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-sva_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sva_password_change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-proyectos_sva_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SECRET_KEY: ${SECRET_KEY:-change_this_secret_key_in_production}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-your_telegram_bot_token}
+      DEBUG: ${DEBUG:-True}
+    volumes:
+      - ./backend:/app
+    networks:
+      - sva_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 # ==============================================================================
 # Volumes

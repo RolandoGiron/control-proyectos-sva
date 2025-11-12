@@ -11,6 +11,7 @@ class ProjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     emoji_icon: Optional[str] = Field("📁", max_length=10)
+    area_id: Optional[str] = Field(None, description="ID del área a la que pertenece el proyecto")
 
 
 class ProjectCreate(ProjectBase):
@@ -23,6 +24,7 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     emoji_icon: Optional[str] = Field(None, max_length=10)
+    area_id: Optional[str] = Field(None, description="ID del área a la que pertenece el proyecto")
     is_archived: Optional[bool] = None
 
 
@@ -30,6 +32,7 @@ class ProjectResponse(ProjectBase):
     """Schema de respuesta de proyecto"""
     id: str
     owner_id: str
+    area_id: Optional[str] = None
     is_archived: bool
     created_at: datetime
     updated_at: datetime

@@ -4,11 +4,11 @@ Sistema completo de gestión de proyectos y tareas con interfaz web responsive, 
 
 ## 📊 Estado Actual del Proyecto
 
-- **Versión**: 0.3.0
-- **Fase Actual**: Fase 2 - Frontend Web (En Progreso - 65%)
-- **Fases Completadas**: Fase 0 (Setup) ✅ | Fase 1 (Backend API) ✅ | Fase 2 (Parcial) 🔄
-- **Progreso Global**: 33%
-- **Última Actualización**: 2024-11-11 20:00
+- **Versión**: 2.0.0
+- **Fase Actual**: Fase 5 - Cache y Optimización (Próximamente)
+- **Fases Completadas**: Fase 0 ✅ | Fase 1 ✅ | Fase 2 ✅ | Fase 3 ✅ | Fase 4 ✅
+- **Progreso Global**: 71%
+- **Última Actualización**: 2024-11-12 19:15
 
 ### ✅ Fases Completadas
 
@@ -26,7 +26,7 @@ Sistema completo de gestión de proyectos y tareas con interfaz web responsive, 
 - Sistema de permisos (owner vs responsible)
 - Documentación Swagger/ReDoc automática
 
-**Fase 2: Frontend Web** (2024-11-11 - En Progreso 65%)
+**Fase 2: Frontend Web** (2024-11-11 - Completada 100%)
 - ✅ Sistema de autenticación completo (Login, Register, JWT)
 - ✅ Layout principal con Sidebar y Header responsive
 - ✅ **Gestión completa de proyectos (CRUD)**
@@ -34,12 +34,25 @@ Sistema completo de gestión de proyectos y tareas con interfaz web responsive, 
   - Archivar/desarchivar proyectos
   - Cards con estadísticas y progreso visual
   - Selector de emojis (72 opciones)
-- ✅ Componentes reutilizables (Modal, Button, Input, Textarea, EmojiPicker)
+- ✅ **Gestión completa de tareas (CRUD)**
+  - TaskForm (crear/editar con validaciones)
+  - Vista Lista y Vista Kanban (toggle entre vistas)
+  - Filtros avanzados (proyecto, estado, prioridad, responsable)
+  - Búsqueda en tiempo real (título y descripción)
+  - UserAutocomplete con búsqueda de usuarios
+  - Selector de prioridad y estado con colores neutros
+  - DatePicker para deadlines
+  - Indicadores de urgencia (Vencido, Hoy, Mañana)
+  - Marcar como completada
+- ✅ **Dashboard con datos reales del backend**
+  - Estadísticas en tiempo real
+  - Proyectos recientes (últimos 5)
+  - Próximas tareas (5 con deadline más cercano)
+  - Badges de estado y prioridad
+- ✅ Componentes reutilizables (Modal, Button, Input, Textarea, EmojiPicker, Select, Badge, UserAutocomplete)
 - ✅ Servicios de API conectados al backend
 - ✅ Protección de rutas con PrivateRoute
-- ✅ Diseño responsive (móvil, tablet, desktop)
-- ⏳ Gestión de tareas (pendiente)
-- ⏳ Dashboard con datos reales (pendiente)
+- ✅ Diseño responsive completo (móvil, tablet, desktop)
 
 ## Tecnologías
 
@@ -535,7 +548,7 @@ docker-compose up -d mysql
 - [x] 17 endpoints implementados
 - [x] Documentación Swagger/ReDoc
 
-### 🔄 Fase 2: Frontend Web (En Progreso 65% - 2024-11-11)
+### ✅ Fase 2: Frontend Web (Completada 100% - 2024-11-11)
 - [x] **Sistema de autenticación** ✅
   - [x] Página de Login
   - [x] Página de Registro
@@ -559,6 +572,7 @@ docker-compose up -d mysql
   - [x] Button (5 variantes, loading)
   - [x] Input, Textarea
   - [x] EmojiPicker (72 emojis)
+  - [x] Select, Badge, UserAutocomplete
 - [x] **Gestión de Proyectos** ✅ COMPLETO
   - [x] Lista con cards y estadísticas
   - [x] Crear proyecto con emoji
@@ -566,24 +580,40 @@ docker-compose up -d mysql
   - [x] Eliminar con confirmación
   - [x] Archivar/desarchivar
   - [x] Barra de progreso visual
-- [ ] **Gestión de Tareas** ⏳ PENDIENTE
-  - [ ] TaskForm (crear/editar)
-  - [ ] Lista/Tabla de tareas
-  - [ ] Filtros avanzados
-  - [ ] Vista Kanban por estados
-  - [ ] Selector de responsable
-  - [ ] DatePicker para deadline
-- [ ] **Dashboard con datos reales** ⏳ PENDIENTE
+- [x] **Gestión de Tareas** ✅ COMPLETO
+  - [x] TaskForm (crear/editar)
+  - [x] Lista y Vista Kanban
+  - [x] Filtros avanzados
+  - [x] Búsqueda en tiempo real
+  - [x] Selector de responsable (UserAutocomplete)
+  - [x] DatePicker para deadline
+  - [x] Indicadores de urgencia
+- [x] **Dashboard con datos reales** ✅ COMPLETO
 
-### ⏳ Fase 3: Bot de Telegram (Pendiente)
-- [ ] Configuración del bot con BotFather
-- [ ] Sistema de vinculación de cuentas
-- [ ] Notificaciones push
-- [ ] Comandos básicos (/start, /tareas, /completar, etc.)
+### ✅ Fase 3: Bot de Telegram (Completada - 2024-11-11/12)
+- [x] Configuración del bot con BotFather
+- [x] Sistema de vinculación de cuentas (código 6 caracteres, expira 15 min)
+- [x] Notificaciones push (nueva tarea, cambio estado, completada)
+- [x] Comandos básicos: /start, /tareas, /completar, /hoy, /pendientes, /semana, /help
+- [x] Endpoints API (generate-code, status, unlink)
+- [x] Servicios (LinkService, TaskService, NotificationService)
+- [x] 10 archivos creados en backend/app/bot/
 
-### ⏳ Fase 4: Sistema de Recordatorios (Pendiente)
-- [ ] Configuración Celery + Redis
-- [ ] Worker de recordatorios automáticos
+### ✅ Fase 4: Sistema de Recordatorios (Completada - 2024-11-12)
+- [x] Configuración Celery + Redis broker
+- [x] Worker de recordatorios (check_upcoming_deadlines cada hora)
+- [x] Resúmenes diarios (8:00 AM) con estadísticas
+- [x] Resúmenes semanales (Lunes 9:00 AM) con productividad
+- [x] 4 archivos creados en backend/app/workers/
+- [x] 3 tareas programadas activas (Celery Beat)
+- [x] Integración completa con Telegram Bot
+- [x] 2 servicios Docker (celery_worker, celery_beat)
+
+### ⏳ Fase 5: Cache y Optimización (Pendiente)
+- [ ] Implementar Redis cache en endpoints
+- [ ] Rate limiting (100 req/min por IP)
+- [ ] Optimización de queries con índices
+- [ ] Lazy loading en frontend
 - [ ] Resúmenes diarios (8:00 AM)
 - [ ] Resúmenes semanales (Lunes 9:00 AM)
 
@@ -606,7 +636,7 @@ docker-compose up -d mysql
 - [ ] Monitoreo y logs centralizados
 - [ ] Backups automáticos
 
-**Progreso Global**: 20% (2 de 7 fases completadas)
+**Progreso Global**: 57% (4 de 7 fases completadas, Fase 4 en progreso)
 
 ## Licencia
 
@@ -618,37 +648,32 @@ Para dudas o soporte, contactar al equipo de desarrollo.
 
 ---
 
-**Última actualización**: 2024-11-11 20:00
-**Versión**: 0.3.0 (Fase 2 En Progreso - Sistema de Proyectos Completado)
-**Próxima milestone**: Completar gestión de tareas en Fase 2
+**Última actualización**: 2024-11-12 18:30
+**Versión**: 1.5.0 (Fase 3 Completada 100% - Bot de Telegram Funcional)
+**Próxima milestone**: Fase 4 - Sistema de Recordatorios (Celery)
 
-## 🎯 Próximos Pasos para Continuar
+## 🎯 Próximos Pasos - Fase 4: Sistema de Recordatorios
 
-Para completar la Fase 2 (próxima sesión):
+Para iniciar la Fase 4 (sesión actual):
 
-1. **Gestión de Tareas (CRUD completo)**
-   - TaskForm con validaciones
-   - TaskCard o TaskRow para mostrar tareas
-   - Lista/Tabla de tareas con columnas
-   - Filtros por estado, prioridad, responsable, proyecto
-   - Búsqueda por texto
-   - Vista Kanban (drag & drop)
-   - Selector de responsable (dropdown de usuarios)
-   - DatePicker para deadline
-   - Funcionalidad marcar completada
+1. **Configuración Celery**
+   - Crear celery_app.py con Redis broker
+   - Configurar Celery Beat scheduler
+   - Agregar servicio en docker-compose.yml
 
-2. **Dashboard mejorado**
-   - Conectar con backend para estadísticas reales
-   - Mostrar proyectos recientes con datos
-   - Mostrar tareas pendientes y completadas
+2. **Worker de Recordatorios**
+   - Implementar check_upcoming_deadlines (ejecutar cada hora)
+   - Buscar tareas próximas a vencer según reminder_hours_before
+   - Enviar notificación vía Telegram
+   - Registrar en tabla notifications
+   - Evitar duplicados
 
-3. **Componentes adicionales**
-   - Select component
-   - Badge component
-   - Avatar component
-   - DatePicker component
+3. **Resúmenes Programados**
+   - send_daily_summary (8:00 AM): Tareas del día por usuario
+   - send_weekly_summary (Lunes 9:00 AM): Tareas de la semana + estadísticas
 
-4. **Perfil de usuario funcional**
-   - Formulario editar perfil
-   - Formulario cambiar contraseña
-   - Integración con Telegram (vincular)
+4. **Estructura de Archivos**
+   - backend/app/workers/__init__.py
+   - backend/app/workers/celery_app.py
+   - backend/app/workers/reminder_tasks.py
+   - backend/app/workers/summary_tasks.py

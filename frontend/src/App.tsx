@@ -1,7 +1,6 @@
 /**
  * App - Componente principal de la aplicación
  */
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/Auth/PrivateRoute';
@@ -12,6 +11,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
+import Areas from './pages/Areas';
 import Profile from './pages/Profile';
 
 function App() {
@@ -48,6 +48,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Tasks />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/areas"
+            element={
+              <PrivateRoute>
+                <Areas />
               </PrivateRoute>
             }
           />

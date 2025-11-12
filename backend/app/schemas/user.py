@@ -1,9 +1,12 @@
 """
 Schemas Pydantic para Usuario
 """
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+# Tipos literales para role
+UserRole = Literal['administrador', 'supervisor', 'analista']
 
 
 class UserBase(BaseModel):
@@ -11,6 +14,8 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: str = Field(..., min_length=1, max_length=255)
     phone_number: Optional[str] = Field(None, max_length=20)
+    role: UserRole = Field('analista', description="Rol del usuario en el sistema")
+    area_id: Optional[str] = Field(None, description="ID del área a la que pertenece el usuario")
 
 
 class UserCreate(UserBase):
@@ -35,6 +40,8 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, min_length=1, max_length=255)
     phone_number: Optional[str] = Field(None, max_length=20)
     telegram_chat_id: Optional[int] = None
+    role: Optional[UserRole] = Field(None, description="Rol del usuario en el sistema")
+    area_id: Optional[str] = Field(None, description="ID del área a la que pertenece el usuario")
 
 
 class UserChangePassword(BaseModel):

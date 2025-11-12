@@ -2,18 +2,12 @@
  * API Types - Interfaces para comunicación con el backend
  */
 
-// Enums
-export enum TaskStatus {
-  SIN_EMPEZAR = 'sin_empezar',
-  EN_CURSO = 'en_curso',
-  COMPLETADO = 'completado',
-}
+// Task enums as literal types
+export type TaskStatus = 'sin_empezar' | 'en_curso' | 'completado';
+export type TaskPriority = 'baja' | 'media' | 'alta';
 
-export enum TaskPriority {
-  BAJA = 'baja',
-  MEDIA = 'media',
-  ALTA = 'alta',
-}
+// User role types
+export type UserRole = 'administrador' | 'supervisor' | 'analista';
 
 // User types
 export interface User {
@@ -23,6 +17,8 @@ export interface User {
   phone_number?: string;
   telegram_chat_id?: number;
   is_active: boolean;
+  role: UserRole;
+  area_id?: string; // UUID
   created_at: string;
   updated_at: string;
 }
@@ -50,6 +46,33 @@ export interface ChangePasswordRequest {
   new_password: string;
 }
 
+// Area types
+export interface Area {
+  id: string; // UUID
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AreaWithStats extends Area {
+  total_users: number;
+  total_projects: number;
+}
+
+export interface AreaCreate {
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export interface AreaUpdate {
+  name?: string;
+  description?: string;
+  is_active?: boolean;
+}
+
 // Project types
 export interface Project {
   id: string; // UUID
@@ -57,6 +80,7 @@ export interface Project {
   description?: string;
   emoji_icon?: string;
   owner_id: string; // UUID
+  area_id?: string; // UUID
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -73,12 +97,14 @@ export interface ProjectCreate {
   name: string;
   description?: string;
   emoji_icon?: string;
+  area_id?: string; // UUID
 }
 
 export interface ProjectUpdate {
   name?: string;
   description?: string;
   emoji_icon?: string;
+  area_id?: string; // UUID
 }
 
 // Task types

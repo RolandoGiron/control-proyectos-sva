@@ -7,9 +7,9 @@ import {
   LayoutDashboard,
   FolderKanban,
   CheckSquare,
+  Layers,
   User,
   LogOut,
-  Menu,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -44,6 +44,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       name: 'Tareas',
       path: '/tasks',
       icon: <CheckSquare className="w-5 h-5" />,
+    },
+    {
+      name: 'Áreas',
+      path: '/areas',
+      icon: <Layers className="w-5 h-5" />,
     },
     {
       name: 'Perfil',

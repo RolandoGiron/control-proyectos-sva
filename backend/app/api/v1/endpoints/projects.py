@@ -8,6 +8,7 @@ from sqlalchemy import func
 
 from app.core.database import get_db
 from app.api.dependencies import get_current_user
+from app.core.permissions import can_access_project, can_modify_project
 from app.models import User, Project, Task
 from app.models.task import TaskStatus
 from app.schemas import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectWithStats
@@ -20,23 +21,44 @@ def list_projects(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     include_archived: bool = Query(False),
+    area_id: Optional[str] = Query(None, description="Filtrar por área (opcional)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Listar proyectos del usuario actual
+    Listar proyectos según el rol del usuario:
+    - Administrador: Ve todos los proyectos
+    - Supervisor: Ve proyectos de su área
+    - Analista: Ve solo sus propios proyectos
 
     Args:
         skip: Número de registros a saltar
         limit: Número máximo de registros a retornar
         include_archived: Incluir proyectos archivados
+        area_id: Filtrar por área (solo para administradores y supervisores)
         current_user: Usuario autenticado
         db: Sesión de base de datos
 
     Returns:
-        Lista de proyectos
+        Lista de proyectos según permisos
     """
-    query = db.query(Project).filter(Project.owner_id == current_user.id)
+    query = db.query(Project)
+
+    # Aplicar filtros según rol
+    if current_user.role == 'administrador':
+        # Administrador ve todos los proyectos
+        if area_id:
+            query = query.filter(Project.area_id == area_id)
+    elif current_user.role == 'supervisor':
+        # Supervisor ve proyectos de su área
+        if current_user.area_id:
+            query = query.filter(Project.area_id == current_user.area_id)
+        else:
+            # Si no tiene área asignada, no ve ningún proyecto
+            query = query.filter(False)
+    else:
+        # Analista ve solo sus propios proyectos
+        query = query.filter(Project.owner_id == current_user.id)
 
     if not include_archived:
         query = query.filter(Project.is_archived == False)
@@ -50,25 +72,39 @@ def list_projects_with_stats(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     include_archived: bool = Query(False),
+    area_id: Optional[str] = Query(None, description="Filtrar por área (opcional)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Listar proyectos con estadísticas de tareas
+    Listar proyectos con estadísticas de tareas según el rol del usuario
 
     Args:
         skip: Número de registros a saltar
         limit: Número máximo de registros a retornar
         include_archived: Incluir proyectos archivados
+        area_id: Filtrar por área (solo para administradores y supervisores)
         current_user: Usuario autenticado
         db: Sesión de base de datos
 
     Returns:
-        Lista de proyectos con estadísticas
+        Lista de proyectos con estadísticas según permisos
     """
     from datetime import datetime
 
-    query = db.query(Project).filter(Project.owner_id == current_user.id)
+    query = db.query(Project)
+
+    # Aplicar filtros según rol
+    if current_user.role == 'administrador':
+        if area_id:
+            query = query.filter(Project.area_id == area_id)
+    elif current_user.role == 'supervisor':
+        if current_user.area_id:
+            query = query.filter(Project.area_id == current_user.area_id)
+        else:
+            query = query.filter(False)
+    else:
+        query = query.filter(Project.owner_id == current_user.id)
 
     if not include_archived:
         query = query.filter(Project.is_archived == False)
@@ -132,6 +168,7 @@ def create_project(
         name=project_data.name,
         description=project_data.description,
         emoji_icon=project_data.emoji_icon,
+        area_id=project_data.area_id,
         owner_id=current_user.id,
     )
 
@@ -144,80 +181,41 @@ def create_project(
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
-    project_id: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    project: Project = Depends(can_access_project),
 ):
     """
-    Obtener proyecto por ID
-
-    Args:
-        project_id: ID del proyecto
-        current_user: Usuario autenticado
-        db: Sesión de base de datos
+    Obtener proyecto por ID (con validación de permisos por rol)
 
     Returns:
         Proyecto encontrado
 
     Raises:
-        HTTPException: Si el proyecto no existe o no pertenece al usuario
+        HTTPException: Si el proyecto no existe o el usuario no tiene acceso
     """
-    project = db.query(Project).filter(
-        Project.id == project_id,
-        Project.owner_id == current_user.id
-    ).first()
-
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proyecto no encontrado"
-        )
-
     return project
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
 def update_project(
-    project_id: str,
     project_update: ProjectUpdate,
-    current_user: User = Depends(get_current_user),
+    project: Project = Depends(can_modify_project),
     db: Session = Depends(get_db),
 ):
     """
-    Actualizar proyecto
+    Actualizar proyecto (con validación de permisos por rol)
 
     Args:
-        project_id: ID del proyecto
         project_update: Datos a actualizar
-        current_user: Usuario autenticado
+        project: Proyecto validado por permisos
         db: Sesión de base de datos
 
     Returns:
         Proyecto actualizado
-
-    Raises:
-        HTTPException: Si el proyecto no existe o no pertenece al usuario
     """
-    project = db.query(Project).filter(
-        Project.id == project_id,
-        Project.owner_id == current_user.id
-    ).first()
-
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proyecto no encontrado"
-        )
-
-    # Actualizar campos
-    if project_update.name is not None:
-        project.name = project_update.name
-    if project_update.description is not None:
-        project.description = project_update.description
-    if project_update.emoji_icon is not None:
-        project.emoji_icon = project_update.emoji_icon
-    if project_update.is_archived is not None:
-        project.is_archived = project_update.is_archived
+    # Actualizar solo los campos proporcionados
+    update_data = project_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(project, field, value)
 
     db.commit()
     db.refresh(project)
@@ -227,32 +225,17 @@ def update_project(
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(
-    project_id: str,
-    current_user: User = Depends(get_current_user),
+    project: Project = Depends(can_modify_project),
     db: Session = Depends(get_db),
 ):
     """
     Eliminar proyecto (y todas sus tareas en cascada)
+    Con validación de permisos por rol
 
     Args:
-        project_id: ID del proyecto
-        current_user: Usuario autenticado
+        project: Proyecto validado por permisos
         db: Sesión de base de datos
-
-    Raises:
-        HTTPException: Si el proyecto no existe o no pertenece al usuario
     """
-    project = db.query(Project).filter(
-        Project.id == project_id,
-        Project.owner_id == current_user.id
-    ).first()
-
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proyecto no encontrado"
-        )
-
     db.delete(project)
     db.commit()
 
@@ -261,35 +244,19 @@ def delete_project(
 
 @router.patch("/{project_id}/archive", response_model=ProjectResponse)
 def archive_project(
-    project_id: str,
-    current_user: User = Depends(get_current_user),
+    project: Project = Depends(can_modify_project),
     db: Session = Depends(get_db),
 ):
     """
-    Archivar proyecto
+    Archivar proyecto (con validación de permisos por rol)
 
     Args:
-        project_id: ID del proyecto
-        current_user: Usuario autenticado
+        project: Proyecto validado por permisos
         db: Sesión de base de datos
 
     Returns:
         Proyecto archivado
-
-    Raises:
-        HTTPException: Si el proyecto no existe o no pertenece al usuario
     """
-    project = db.query(Project).filter(
-        Project.id == project_id,
-        Project.owner_id == current_user.id
-    ).first()
-
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proyecto no encontrado"
-        )
-
     project.is_archived = True
     db.commit()
     db.refresh(project)
@@ -299,35 +266,19 @@ def archive_project(
 
 @router.patch("/{project_id}/unarchive", response_model=ProjectResponse)
 def unarchive_project(
-    project_id: str,
-    current_user: User = Depends(get_current_user),
+    project: Project = Depends(can_modify_project),
     db: Session = Depends(get_db),
 ):
     """
-    Desarchivar proyecto
+    Desarchivar proyecto (con validación de permisos por rol)
 
     Args:
-        project_id: ID del proyecto
-        current_user: Usuario autenticado
+        project: Proyecto validado por permisos
         db: Sesión de base de datos
 
     Returns:
         Proyecto desarchivado
-
-    Raises:
-        HTTPException: Si el proyecto no existe o no pertenece al usuario
     """
-    project = db.query(Project).filter(
-        Project.id == project_id,
-        Project.owner_id == current_user.id
-    ).first()
-
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Proyecto no encontrado"
-        )
-
     project.is_archived = False
     db.commit()
     db.refresh(project)

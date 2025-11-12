@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { MoreVertical, Edit2, Trash2, Archive, ArchiveRestore } from 'lucide-react';
 import { ProjectWithStats } from '../../types/api';
 import { Link } from 'react-router-dom';
+import AreaBadge from '../Areas/AreaBadge';
 
 interface ProjectCardProps {
   project: ProjectWithStats;
@@ -112,6 +113,18 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             )}
           </div>
         </div>
+
+        {/* Area Badge */}
+        {project.area && (
+          <div className="mb-3">
+            <AreaBadge
+              name={project.area.name}
+              color={project.area.color}
+              icon={project.area.icon}
+              size="sm"
+            />
+          </div>
+        )}
 
         {/* Description */}
         {project.description && (
