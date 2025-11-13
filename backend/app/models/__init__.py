@@ -1,6 +1,7 @@
 """
 Modelos SQLAlchemy
 """
+from app.models.area import Area
 from app.models.user import User
 from app.models.project import Project
 from app.models.task import Task, TaskStatus, TaskPriority
@@ -8,6 +9,7 @@ from app.models.notification import Notification, NotificationType
 from app.models.telegram_link_code import TelegramLinkCode
 
 __all__ = [
+    "Area",
     "User",
     "Project",
     "Task",

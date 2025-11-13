@@ -29,8 +29,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código de la aplicación
 COPY . .
 
+# Hacer el entrypoint ejecutable
+RUN chmod +x entrypoint.sh
+
 # Exponer puerto
 EXPOSE 8000
 
-# Comando por defecto
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Entrypoint que inicializa DB y luego inicia el servidor
+ENTRYPOINT ["./entrypoint.sh"]

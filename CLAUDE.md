@@ -866,6 +866,33 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 - **Alternativas consideradas**: Colores vibrantes (descartado - demasiado llamativos)
 - **Impacto**: Interfaz más profesional y menos cansada visualmente
 
+### 2024-11-13: Sistema de Migraciones Automáticas con Alembic
+- **Decisión**: Implementar migraciones automáticas de base de datos con Alembic + script de inicialización
+- **Razón**: Al clonar el repositorio en diferentes máquinas, las tablas no se creaban automáticamente, causando errores como "Table 'areas' doesn't exist"
+- **Alternativas consideradas**:
+  - Script SQL manual (descartado - propenso a errores y no versionado)
+  - Crear tablas en código Python (descartado - no permite control de versiones)
+- **Implementación**:
+  - Configuración de Alembic (alembic.ini, env.py)
+  - Script `init_db.py` que espera MySQL y ejecuta migraciones automáticamente
+  - Entrypoint `entrypoint.sh` en Dockerfile que ejecuta init_db.py antes de uvicorn
+  - Migración inicial generada con todas las tablas (areas, users, projects, tasks, notifications, telegram_link_codes)
+- **Impacto**:
+  - ✅ Setup automático al ejecutar `docker-compose up`
+  - ✅ Control de versiones de esquema de BD
+  - ✅ Fácil deployment en nuevos ambientes
+  - ✅ Migraciones reversibles (upgrade/downgrade)
+- **Archivos creados**:
+  - `backend/alembic.ini` - Configuración de Alembic
+  - `backend/alembic/env.py` - Configuración de entorno
+  - `backend/alembic/versions/9f5bf52fe18f_initial_migration.py` - Migración inicial
+  - `backend/init_db.py` - Script de inicialización automática (152 líneas)
+  - `backend/entrypoint.sh` - Entrypoint del contenedor
+- **Archivos modificados**:
+  - `backend/app/models/__init__.py` - Agregado modelo Area
+  - `backend/Dockerfile` - Cambiado CMD a ENTRYPOINT con script
+  - `README.md` - Agregada sección de migraciones y troubleshooting
+
 ---
 
 ## Problemas y Soluciones

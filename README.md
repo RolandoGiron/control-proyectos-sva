@@ -229,6 +229,14 @@ docker-compose up --build
 docker-compose up -d --build
 ```
 
+**⚠️ IMPORTANTE**: Al iniciar el backend por primera vez, el sistema:
+1. ✅ Esperará a que MySQL esté disponible
+2. ✅ Ejecutará automáticamente las migraciones de Alembic
+3. ✅ Creará todas las tablas necesarias (areas, users, projects, tasks, notifications, telegram_link_codes)
+4. ✅ Iniciará el servidor Uvicorn
+
+**No necesitas ejecutar scripts SQL manualmente**. El sistema se inicializa automáticamente.
+
 ### Acceder a la aplicación
 
 - **Frontend Web**: http://localhost:5173
@@ -247,23 +255,79 @@ docker-compose down -v
 
 ## Desarrollo
 
+### Migraciones de Base de Datos (Alembic)
+
+El proyecto usa **Alembic** para gestionar migraciones de base de datos de forma automática.
+
+#### ¿Cómo funcionan las migraciones?
+
+1. **Automáticas al iniciar**: Cuando inicias el backend con `docker-compose up`, las migraciones se ejecutan automáticamente
+2. **Control de versiones**: Cada cambio en los modelos SQLAlchemy se registra como una migración
+3. **Reversibles**: Puedes avanzar o retroceder versiones de la base de datos
+
+#### Comandos de Migraciones
+
+```bash
+# Entrar al contenedor backend
+docker-compose exec backend bash
+
+# Ver historial de migraciones
+alembic history
+
+# Ver versión actual
+alembic current
+
+# Crear nueva migración después de modificar modelos
+alembic revision --autogenerate -m "descripción del cambio"
+
+# Aplicar migraciones pendientes
+alembic upgrade head
+
+# Retroceder una migración
+alembic downgrade -1
+
+# Retroceder a versión específica
+alembic downgrade <revision_id>
+```
+
+#### Ejemplo: Agregar un nuevo campo a un modelo
+
+1. Modificar el modelo en `backend/app/models/`:
+```python
+# En app/models/task.py
+class Task(Base):
+    # ... campos existentes ...
+    estimated_hours = Column(Integer, nullable=True)  # NUEVO CAMPO
+```
+
+2. Generar migración automática:
+```bash
+docker-compose exec backend alembic revision --autogenerate -m "add estimated_hours to tasks"
+```
+
+3. Revisar el archivo generado en `alembic/versions/`
+
+4. Aplicar migración:
+```bash
+docker-compose exec backend alembic upgrade head
+```
+
+5. ¡Listo! La tabla `tasks` ahora tiene el campo `estimated_hours`
+
 ### Backend (FastAPI)
 
 ```bash
 # Entrar al contenedor backend
 docker-compose exec backend bash
 
-# Crear nueva migración
-alembic revision --autogenerate -m "descripción"
-
-# Aplicar migraciones
-alembic upgrade head
-
 # Ejecutar tests
 pytest
 
 # Ver logs
 docker-compose logs -f backend
+
+# Reiniciar solo el backend
+docker-compose restart backend
 ```
 
 ### Frontend (React)
@@ -494,6 +558,62 @@ docker-compose logs mysql
 # Recrear volumen
 docker-compose down -v
 docker-compose up -d mysql
+```
+
+### Problema: Error "Table 'areas' doesn't exist" al clonar el repositorio
+
+**Causa**: Clonaste el repositorio en una máquina nueva y la base de datos no tiene las tablas creadas.
+
+**Solución**:
+```bash
+# 1. Detener todos los servicios
+docker-compose down
+
+# 2. (Opcional) Limpiar volúmenes si ya existe data corrupta
+docker-compose down -v
+
+# 3. Iniciar servicios de nuevo
+docker-compose up --build
+
+# Las migraciones se ejecutarán automáticamente y crearán todas las tablas
+```
+
+**Verificar que las migraciones se ejecutaron**:
+```bash
+# Ver logs del backend
+docker-compose logs backend | grep "INICIALIZANDO BASE DE DATOS"
+
+# Debería mostrar:
+# ✓ MySQL está disponible
+# ✓ Migraciones ejecutadas correctamente
+# ✓ Tabla 'areas' existe
+# ✓ INICIALIZACIÓN COMPLETADA
+
+# Conectar a MySQL y verificar tablas
+docker-compose exec mysql mysql -u sva_user -p proyectos_sva_db
+
+# Dentro de MySQL:
+mysql> SHOW TABLES;
+# Debería mostrar: areas, users, projects, tasks, notifications, telegram_link_codes, alembic_version
+```
+
+### Problema: Migraciones no se aplican automáticamente
+
+**Causa**: El script de inicialización puede haber fallado.
+
+**Solución**:
+```bash
+# 1. Ver logs detallados del backend
+docker-compose logs backend
+
+# 2. Aplicar migraciones manualmente
+docker-compose exec backend alembic upgrade head
+
+# 3. Si hay error "alembic_version doesn't exist", inicializar Alembic
+docker-compose exec backend alembic stamp head
+
+# 4. Reiniciar el backend
+docker-compose restart backend
 ```
 
 ### Problema: Bot no recibe mensajes (Fase 3)
