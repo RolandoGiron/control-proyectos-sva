@@ -918,6 +918,26 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 - **Solución**: Usar `values_callable=lambda obj: [e.value for e in obj]` en la definición de columnas Enum de SQLAlchemy, donde e.value='sin_empezar' (lowercase).
 - **Lecciones aprendidas**: Siempre sincronizar formatos de enums entre ORM y schema SQL.
 
+### Problema: Tabla 'areas' no se creaba en otras máquinas
+- **Fecha**: 2024-11-13
+- **Descripción**: Al clonar el repositorio en otra máquina y ejecutar `docker-compose up`, las migraciones de Alembic no creaban la tabla `areas`. La migración inicial (9f5bf52fe18f) hacía `ALTER TABLE areas` asumiendo que la tabla ya existía, pero nunca la creaba con `CREATE TABLE`.
+- **Error**: Al ejecutar `SHOW TABLES` faltaba la tabla `areas`, aunque todas las demás tablas (users, projects, tasks, notifications, telegram_link_codes) sí existían.
+- **Causa raíz**: La migración inicial fue generada con `alembic revision --autogenerate` desde una base de datos que YA tenía la tabla `areas` (creada con schema.sql), por lo que Alembic solo detectó diferencias para hacer ALTER en lugar de CREATE.
+- **Solución**:
+  1. Creada nueva migración `4cf674784ecd_add_areas_table.py` que crea la tabla `areas` con verificación previa
+  2. La migración verifica con `inspector.get_table_names()` si la tabla existe antes de crearla
+  3. Incluye todos los campos: id, name, description, color, icon, is_active, created_at, updated_at
+  4. Incluye índices: `ix_areas_name` (unique) y `ix_areas_is_active`
+  5. Usa `server_default` para valores por defecto (color='#3B82F6', icon='📁', is_active=1)
+- **Testing realizado**:
+  - Migración se ejecuta sin errores en máquinas donde la tabla NO existe (crea la tabla)
+  - Migración se ejecuta sin errores en máquinas donde la tabla SÍ existe (no hace nada)
+- **Lecciones aprendidas**:
+  - Nunca asumir que las tablas existen en migraciones de Alembic
+  - Siempre usar `inspector.get_table_names()` para verificar existencia antes de ALTER
+  - Generar migraciones iniciales desde una base de datos limpia (sin tablas pre-existentes)
+  - Eliminar schema.sql una vez que se está usando Alembic completamente
+
 ---
 
 ## Pendientes y Notas
@@ -945,6 +965,19 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 ---
 
 ## Changelog
+
+### [1.0.1] - 2024-11-13 23:10
+#### Corregido - Migración de tabla areas
+- 🐛 **Problema crítico resuelto**: Tabla `areas` no se creaba en máquinas nuevas
+  - Causa: La migración inicial (9f5bf52fe18f) hacía ALTER TABLE en lugar de CREATE TABLE
+  - Solución: Nueva migración `4cf674784ecd_add_areas_table.py` con verificación de existencia
+  - Verificación previa con `inspector.get_table_names()` antes de crear la tabla
+  - Incluye todos los campos y índices necesarios
+  - Compatible con ambos escenarios (tabla existe / tabla no existe)
+- 📝 **Documentación actualizada**:
+  - Agregada entrada en "Problemas y Soluciones" del CLAUDE.md
+  - Documentadas lecciones aprendidas sobre migraciones de Alembic
+- **Impacto**: Ahora el proyecto se puede clonar y ejecutar en cualquier máquina sin problemas de tablas faltantes
 
 ### [1.0.0] - 2024-11-11 23:00
 #### Completado - Fase 2 COMPLETA (100%)
