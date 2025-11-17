@@ -1,13 +1,164 @@
 /**
  * Profile Page - Página de perfil del usuario
  */
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '../components/Layout/MainLayout';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Mail, Phone, Calendar } from 'lucide-react';
+import { User, Mail, Phone, Calendar, X } from 'lucide-react';
+import Modal from '../components/common/Modal';
+import Input from '../components/common/Input';
+import Button from '../components/common/Button';
+import authService from '../services/authService';
+
+interface EditProfileForm {
+  full_name: string;
+  phone_number: string;
+}
+
+interface ChangePasswordForm {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}
 
 const Profile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+
+  // Modal states
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  // Form states
+  const [editForm, setEditForm] = useState<EditProfileForm>({
+    full_name: user?.full_name || '',
+    phone_number: user?.phone_number || '',
+  });
+
+  const [passwordForm, setPasswordForm] = useState<ChangePasswordForm>({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  });
+
+  // Loading and error states
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Validation errors
+  const [passwordErrors, setPasswordErrors] = useState<{
+    current_password?: string;
+    new_password?: string;
+    confirm_password?: string;
+  }>({});
+
+  const openEditModal = () => {
+    setEditForm({
+      full_name: user?.full_name || '',
+      phone_number: user?.phone_number || '',
+    });
+    setError(null);
+    setSuccess(null);
+    setIsEditModalOpen(true);
+  };
+
+  const openPasswordModal = () => {
+    setPasswordForm({
+      current_password: '',
+      new_password: '',
+      confirm_password: '',
+    });
+    setPasswordErrors({});
+    setError(null);
+    setSuccess(null);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleEditProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const updatedUser = await authService.updateProfile({
+        full_name: editForm.full_name,
+        phone_number: editForm.phone_number || null,
+      });
+
+      updateUser(updatedUser);
+      setSuccess('Perfil actualizado exitosamente');
+      setTimeout(() => {
+        setIsEditModalOpen(false);
+        setSuccess(null);
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al actualizar perfil');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validatePassword = (): boolean => {
+    const errors: typeof passwordErrors = {};
+
+    if (!passwordForm.current_password) {
+      errors.current_password = 'La contraseña actual es requerida';
+    }
+
+    if (!passwordForm.new_password) {
+      errors.new_password = 'La nueva contraseña es requerida';
+    } else if (passwordForm.new_password.length < 8) {
+      errors.new_password = 'La contraseña debe tener al menos 8 caracteres';
+    } else if (!/[A-Z]/.test(passwordForm.new_password)) {
+      errors.new_password = 'Debe contener al menos una mayúscula';
+    } else if (!/[0-9]/.test(passwordForm.new_password)) {
+      errors.new_password = 'Debe contener al menos un número';
+    }
+
+    if (!passwordForm.confirm_password) {
+      errors.confirm_password = 'Confirma la nueva contraseña';
+    } else if (passwordForm.new_password !== passwordForm.confirm_password) {
+      errors.confirm_password = 'Las contraseñas no coinciden';
+    }
+
+    setPasswordErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (!validatePassword()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await authService.changePassword({
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password,
+      });
+
+      setSuccess('Contraseña cambiada exitosamente');
+      setTimeout(() => {
+        setIsPasswordModalOpen(false);
+        setSuccess(null);
+        setPasswordForm({
+          current_password: '',
+          new_password: '',
+          confirm_password: '',
+        });
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al cambiar contraseña');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <MainLayout>
@@ -43,7 +194,10 @@ const Profile: React.FC = () => {
                 <p className="text-gray-600">{user?.email}</p>
               </div>
 
-              <button className="mt-4 md:mt-0 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+              <button
+                onClick={openEditModal}
+                className="mt-4 md:mt-0 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
                 Editar Perfil
               </button>
             </div>
@@ -117,7 +271,10 @@ const Profile: React.FC = () => {
             Seguridad
           </h3>
           <div className="space-y-3">
-            <button className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            <button
+              onClick={openPasswordModal}
+              className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               Cambiar Contraseña
             </button>
           </div>
@@ -150,6 +307,138 @@ const Profile: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Edit Profile Modal */}
+        <Modal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          title="Editar Perfil"
+        >
+          <form onSubmit={handleEditProfile} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                {success}
+              </div>
+            )}
+
+            <Input
+              label="Nombre Completo"
+              value={editForm.full_name}
+              onChange={(e) =>
+                setEditForm({ ...editForm, full_name: e.target.value })
+              }
+              required
+              placeholder="Ej: Juan Pérez"
+            />
+
+            <Input
+              label="Teléfono (opcional)"
+              value={editForm.phone_number}
+              onChange={(e) =>
+                setEditForm({ ...editForm, phone_number: e.target.value })
+              }
+              placeholder="Ej: +502 1234-5678"
+            />
+
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" variant="primary" loading={loading}>
+                Guardar Cambios
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Change Password Modal */}
+        <Modal
+          isOpen={isPasswordModalOpen}
+          onClose={() => setIsPasswordModalOpen(false)}
+          title="Cambiar Contraseña"
+        >
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                {success}
+              </div>
+            )}
+
+            <Input
+              label="Contraseña Actual"
+              type="password"
+              value={passwordForm.current_password}
+              onChange={(e) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  current_password: e.target.value,
+                })
+              }
+              required
+              error={passwordErrors.current_password}
+            />
+
+            <Input
+              label="Nueva Contraseña"
+              type="password"
+              value={passwordForm.new_password}
+              onChange={(e) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  new_password: e.target.value,
+                })
+              }
+              required
+              error={passwordErrors.new_password}
+              helperText="Mínimo 8 caracteres, una mayúscula y un número"
+            />
+
+            <Input
+              label="Confirmar Nueva Contraseña"
+              type="password"
+              value={passwordForm.confirm_password}
+              onChange={(e) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  confirm_password: e.target.value,
+                })
+              }
+              required
+              error={passwordErrors.confirm_password}
+            />
+
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setIsPasswordModalOpen(false)}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" variant="primary" loading={loading}>
+                Cambiar Contraseña
+              </Button>
+            </div>
+          </form>
+        </Modal>
       </div>
     </MainLayout>
   );

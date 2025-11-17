@@ -113,15 +113,15 @@ const TaskCard: React.FC<TaskCardProps> = ({
       `}
       onClick={() => onEdit(task)}
     >
-      {/* Header with project and menu */}
-      <div className="flex items-start justify-between mb-2">
+      {/* Header with project name and menu */}
+      <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {project && (
-            <span className="text-xl flex-shrink-0" title={project.name}>
+            <span className="text-2xl flex-shrink-0" title={project.name}>
               {project.emoji_icon || '📁'}
             </span>
           )}
-          <span className="text-sm text-gray-600 truncate">
+          <span className="text-sm font-semibold text-gray-700 truncate">
             {project?.name || 'Sin proyecto'}
           </span>
         </div>

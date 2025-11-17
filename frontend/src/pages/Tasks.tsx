@@ -25,6 +25,7 @@ const Tasks: React.FC = () => {
   const [filterProject, setFilterProject] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -124,14 +125,26 @@ const Tasks: React.FC = () => {
     return projects.find((p) => p.id === projectId);
   };
 
-  // Filter tasks by search term
+  // Filter tasks by search term and overdue status
   const filteredTasks = tasks.filter((task) => {
-    if (!searchTerm.trim()) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      task.title.toLowerCase().includes(search) ||
-      task.description?.toLowerCase().includes(search)
-    );
+    // Search filter
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      const matchesSearch =
+        task.title.toLowerCase().includes(search) ||
+        task.description?.toLowerCase().includes(search);
+      if (!matchesSearch) return false;
+    }
+
+    // Overdue filter
+    if (showOverdueOnly) {
+      if (task.status === 'completado' || !task.deadline) return false;
+      const now = new Date();
+      const isOverdue = new Date(task.deadline) < now;
+      if (!isOverdue) return false;
+    }
+
+    return true;
   });
 
   // Group tasks by status for Kanban view
@@ -206,68 +219,89 @@ const Tasks: React.FC = () => {
 
         {/* Filters and View Toggle */}
         <div className="bg-white rounded-lg shadow-sm p-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Buscar tareas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+          <div className="flex flex-col gap-4">
+            {/* First Row: Search and Filters */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Buscar tareas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Filters */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:w-auto">
+                <Select
+                  value={filterProject}
+                  onChange={setFilterProject}
+                  options={projectOptions}
+                  placeholder="Proyecto"
+                />
+                <Select
+                  value={filterStatus}
+                  onChange={setFilterStatus}
+                  options={statusOptions}
+                  placeholder="Estado"
+                />
+                <Select
+                  value={filterPriority}
+                  onChange={setFilterPriority}
+                  options={priorityOptions}
+                  placeholder="Prioridad"
+                />
+              </div>
             </div>
 
-            {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:w-auto">
-              <Select
-                value={filterProject}
-                onChange={setFilterProject}
-                options={projectOptions}
-                placeholder="Proyecto"
-              />
-              <Select
-                value={filterStatus}
-                onChange={setFilterStatus}
-                options={statusOptions}
-                placeholder="Estado"
-              />
-              <Select
-                value={filterPriority}
-                onChange={setFilterPriority}
-                options={priorityOptions}
-                placeholder="Prioridad"
-              />
-            </div>
+            {/* Second Row: View Toggle and Overdue Filter */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              {/* Overdue Filter */}
+              <button
+                onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  showOverdueOnly
+                    ? 'bg-red-100 text-red-700 border border-red-300'
+                    : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {showOverdueOnly ? 'Mostrando solo vencidas' : 'Mostrar solo vencidas'}
+              </button>
 
-            {/* View Toggle */}
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-4 py-2 text-sm font-medium ${
-                  viewMode === 'list'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-                title="Vista Lista"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setViewMode('kanban')}
-                className={`px-4 py-2 text-sm font-medium border-l border-gray-300 ${
-                  viewMode === 'kanban'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-                title="Vista Kanban"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                </svg>
-              </button>
+              {/* View Toggle */}
+              <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 py-2 text-sm font-medium ${
+                    viewMode === 'list'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title="Vista Lista"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  className={`px-4 py-2 text-sm font-medium border-l border-gray-300 ${
+                    viewMode === 'kanban'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title="Vista Kanban"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>

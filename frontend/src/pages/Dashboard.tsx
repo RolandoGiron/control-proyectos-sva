@@ -12,6 +12,7 @@ interface DashboardStats {
   pendingTasks: number;
   inProgressTasks: number;
   completedTasks: number;
+  overdueTasks: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -23,9 +24,11 @@ const Dashboard: React.FC = () => {
     pendingTasks: 0,
     inProgressTasks: 0,
     completedTasks: 0,
+    overdueTasks: 0,
   });
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
+  const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,15 +47,21 @@ const Dashboard: React.FC = () => {
       ]);
 
       // Calculate stats
+      const now = new Date();
       const pendingTasks = allTasks.filter((t: Task) => t.status === 'sin_empezar');
       const inProgressTasks = allTasks.filter((t: Task) => t.status === 'en_curso');
       const completedTasks = allTasks.filter((t: Task) => t.status === 'completado');
+      const overdue = allTasks.filter((t: Task) => {
+        if (t.status === 'completado' || !t.deadline) return false;
+        return new Date(t.deadline) < now;
+      });
 
       setStats({
         totalProjects: projects.length,
         pendingTasks: pendingTasks.length,
         inProgressTasks: inProgressTasks.length,
         completedTasks: completedTasks.length,
+        overdueTasks: overdue.length,
       });
 
       // Recent projects (last 5, not archived)
@@ -72,6 +81,15 @@ const Dashboard: React.FC = () => {
         })
         .slice(0, 5);
       setUpcomingTasks(sortedTasks);
+
+      // Overdue tasks (incomplete with past deadline, sorted by oldest first)
+      const overdueTasksList = overdue
+        .sort((a: Task, b: Task) => {
+          if (!a.deadline || !b.deadline) return 0;
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        })
+        .slice(0, 5);
+      setOverdueTasks(overdueTasksList);
     } catch (err: any) {
       console.error('Error loading dashboard:', err);
       setError(err.response?.data?.detail || 'Error al cargar el dashboard');
@@ -126,6 +144,18 @@ const Dashboard: React.FC = () => {
       bgColor: 'bg-blue-50',
       textColor: 'text-blue-600',
       borderColor: 'border-blue-200',
+    },
+    {
+      title: 'Tareas Vencidas',
+      value: stats.overdueTasks.toString(),
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      bgColor: 'bg-red-50',
+      textColor: 'text-red-600',
+      borderColor: 'border-red-200',
     },
     {
       title: 'Tareas Pendientes',
@@ -198,7 +228,7 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Stats cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           {statsCards.map((stat, index) => (
             <div
               key={index}
@@ -221,7 +251,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Recent activity section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Proyectos recientes */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
@@ -320,6 +350,60 @@ const Dashboard: React.FC = () => {
                       </p>
                       {task.deadline && (
                         <span className={`text-xs font-medium flex-shrink-0 ${getDeadlineColor(task.deadline)}`}>
+                          {formatDate(task.deadline)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="status" value={task.status} />
+                      <Badge variant="priority" value={task.priority} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Tareas vencidas */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                Tareas Vencidas
+                {stats.overdueTasks > 0 && (
+                  <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">
+                    {stats.overdueTasks}
+                  </span>
+                )}
+              </h2>
+              <button
+                onClick={() => navigate('/tasks')}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Ver todas →
+              </button>
+            </div>
+            <div className="space-y-3">
+              {overdueTasks.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-green-600 font-medium">¡Excelente!</p>
+                  <p className="text-sm">No tienes tareas vencidas</p>
+                </div>
+              ) : (
+                overdueTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => navigate('/tasks')}
+                    className="p-3 hover:bg-red-50 rounded-lg cursor-pointer transition-colors border border-red-200 bg-red-50"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="font-medium text-gray-900 flex-1 pr-2">
+                        {task.title}
+                      </p>
+                      {task.deadline && (
+                        <span className="text-xs font-medium flex-shrink-0 text-red-600">
                           {formatDate(task.deadline)}
                         </span>
                       )}
