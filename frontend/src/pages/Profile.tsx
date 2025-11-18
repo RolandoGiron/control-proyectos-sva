@@ -9,6 +9,7 @@ import Modal from '../components/common/Modal';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import authService from '../services/authService';
+import TelegramLinkSection from '../components/Profile/TelegramLinkSection';
 
 interface EditProfileForm {
   full_name: string;
@@ -285,27 +286,7 @@ const Profile: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Integración con Telegram
           </h3>
-          <div className="space-y-3">
-            {user?.telegram_chat_id ? (
-              <div className="flex items-center space-x-3">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                  ✓ Conectado
-                </span>
-                <button className="text-sm text-red-600 hover:text-red-700">
-                  Desconectar
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p className="text-gray-600 text-sm mb-3">
-                  Vincula tu cuenta con Telegram para recibir notificaciones
-                </p>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                  Vincular Telegram
-                </button>
-              </div>
-            )}
-          </div>
+          <TelegramLinkSection />
         </div>
 
         {/* Edit Profile Modal */}

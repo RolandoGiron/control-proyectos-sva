@@ -60,27 +60,50 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler del comando /help o /ayuda"""
-    help_text = (
-        "📋 <b>Comandos Disponibles</b>\n\n"
-        "<b>/start CODIGO</b> - Vincular tu cuenta de Telegram\n"
-        "<b>/tareas</b> - Ver todas tus tareas pendientes\n"
-        "<b>/hoy</b> - Ver tareas con deadline para hoy\n"
-        "<b>/pendientes</b> - Ver tareas sin empezar\n"
-        "<b>/semana</b> - Ver tareas de esta semana\n"
-        "<b>/completar [ID]</b> - Marcar una tarea como completada\n"
-        "<b>/ayuda</b> o <b>/help</b> - Mostrar esta ayuda\n\n"
-        "💡 <b>Tip:</b> Recibirás notificaciones automáticas cuando:\n"
-        "• Te asignen una nueva tarea\n"
-        "• Cambien el estado de tus tareas\n"
-        "• Se complete una tarea en tus proyectos\n"
-        "• Se acerque el deadline de una tarea"
-    )
+    chat_id = update.effective_chat.id
+    task_service = TaskService()
+
+    # Verificar si el usuario está vinculado para personalizar la ayuda
+    user = await task_service.get_user_by_chat_id(chat_id)
+    is_admin = user and user.get('role') == 'administrador'
+
+    help_text = "📋 <b>Comandos Disponibles</b>\n\n"
+    help_text += "<b>/start CODIGO</b> - Vincular tu cuenta de Telegram\n"
+
+    # Descripción personalizada según rol
+    if is_admin:
+        help_text += "<b>/tareas</b> - Ver próximas 15 tareas a vencer (todos los usuarios)\n"
+        help_text += "<b>/pendientes</b> - Ver todas las tareas sin empezar (todos)\n"
+        help_text += "<b>/vencidas</b> - Ver todas las tareas vencidas (todos)\n"
+    else:
+        help_text += "<b>/tareas</b> - Ver todas tus tareas asignadas\n"
+        help_text += "<b>/pendientes</b> - Ver tus tareas sin empezar\n"
+        help_text += "<b>/vencidas</b> - Ver tus tareas vencidas\n"
+
+    help_text += "<b>/hoy</b> - Ver tareas con deadline para hoy\n"
+    help_text += "<b>/semana</b> - Ver tareas de esta semana\n"
+    help_text += "<b>/completar [ID]</b> - Marcar una tarea como completada\n"
+    help_text += "<b>/ayuda</b> o <b>/help</b> - Mostrar esta ayuda\n\n"
+
+    if is_admin:
+        help_text += "👨‍💼 <b>Modo Administrador Activo</b>\n"
+        help_text += "Tienes acceso a ver tareas de todos los usuarios.\n\n"
+
+    help_text += "💡 <b>Tip:</b> Recibirás notificaciones automáticas cuando:\n"
+    help_text += "• Te asignen una nueva tarea\n"
+    help_text += "• Cambien el estado de tus tareas\n"
+    help_text += "• Se complete una tarea en tus proyectos\n"
+    help_text += "• Se acerque el deadline de una tarea"
 
     await update.message.reply_text(help_text, parse_mode='HTML')
 
 
 async def tareas_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler del comando /tareas - Ver todas las tareas pendientes"""
+    """
+    Handler del comando /tareas
+    - Usuario normal: Ver todas sus tareas asignadas (no completadas)
+    - Administrador: Ver próximas 15 tareas a vencer de todos los usuarios
+    """
     chat_id = update.effective_chat.id
     task_service = TaskService()
 
@@ -94,21 +117,30 @@ async def tareas_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Obtener tareas del usuario
-    tasks = await task_service.get_user_tasks(user['id'])
+    # Obtener tareas según rol
+    tasks = await task_service.get_user_tasks(user['id'], user['role'])
 
     if not tasks:
-        await update.message.reply_text(
-            "✅ No tienes tareas pendientes.\n"
-            "¡Buen trabajo!",
-            parse_mode='HTML'
-        )
+        if user['role'] == 'administrador':
+            await update.message.reply_text(
+                "✅ No hay tareas próximas a vencer.",
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_text(
+                "✅ No tienes tareas pendientes.\n"
+                "¡Buen trabajo!",
+                parse_mode='HTML'
+            )
         return
 
     # Formatear tareas
-    message = f"📋 <b>Tus Tareas ({len(tasks)})</b>\n\n"
+    if user['role'] == 'administrador':
+        message = f"📋 <b>Próximas Tareas a Vencer ({len(tasks)})</b>\n\n"
+    else:
+        message = f"📋 <b>Tus Tareas ({len(tasks)})</b>\n\n"
 
-    for task in tasks[:10]:  # Máximo 10 tareas
+    for task in tasks[:15]:  # Máximo 15 tareas
         status_emoji = {
             'sin_empezar': '⚪',
             'en_curso': '🔵',
@@ -124,16 +156,21 @@ async def tareas_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message += (
             f"{status_emoji} {priority_emoji} <b>{task['title']}</b>\n"
             f"   Proyecto: {task['project_name']}\n"
-            f"   Estado: {task['status_display']}\n"
         )
+
+        # Si es admin, mostrar responsable
+        if user['role'] == 'administrador' and task.get('responsible_name'):
+            message += f"   👤 Responsable: {task['responsible_name']}\n"
+
+        message += f"   Estado: {task['status_display']}\n"
 
         if task.get('deadline'):
             message += f"   📅 Deadline: {task['deadline_display']}\n"
 
         message += f"   ID: <code>{task['id'][:8]}</code>\n\n"
 
-    if len(tasks) > 10:
-        message += f"\n... y {len(tasks) - 10} tareas más."
+    if len(tasks) > 15:
+        message += f"\n... y {len(tasks) - 15} tareas más."
 
     await update.message.reply_text(message, parse_mode='HTML')
 
@@ -231,7 +268,11 @@ async def hoy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def pendientes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler del comando /pendientes - Ver tareas sin empezar"""
+    """
+    Handler del comando /pendientes - Ver tareas sin empezar
+    - Usuario normal: Sus tareas sin empezar
+    - Administrador: Todas las tareas sin empezar de todos los usuarios
+    """
     chat_id = update.effective_chat.id
     task_service = TaskService()
 
@@ -244,20 +285,29 @@ async def pendientes_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
 
-    # Obtener tareas pendientes
-    tasks = await task_service.get_pending_tasks(user['id'])
+    # Obtener tareas pendientes según rol
+    tasks = await task_service.get_pending_tasks(user['id'], user['role'])
 
     if not tasks:
-        await update.message.reply_text(
-            "✅ No tienes tareas pendientes sin empezar.",
-            parse_mode='HTML'
-        )
+        if user['role'] == 'administrador':
+            await update.message.reply_text(
+                "✅ No hay tareas sin empezar en el sistema.",
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_text(
+                "✅ No tienes tareas pendientes sin empezar.",
+                parse_mode='HTML'
+            )
         return
 
     # Formatear tareas
-    message = f"⚪ <b>Tareas Sin Empezar ({len(tasks)})</b>\n\n"
+    if user['role'] == 'administrador':
+        message = f"⚪ <b>Tareas Sin Empezar - Todos ({len(tasks)})</b>\n\n"
+    else:
+        message = f"⚪ <b>Tareas Sin Empezar ({len(tasks)})</b>\n\n"
 
-    for task in tasks[:10]:
+    for task in tasks[:15]:  # Máximo 15 tareas
         priority_emoji = {
             'baja': '🟢',
             'media': '🟡',
@@ -269,13 +319,17 @@ async def pendientes_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
             f"   Proyecto: {task['project_name']}\n"
         )
 
+        # Si es admin, mostrar responsable
+        if user['role'] == 'administrador' and task.get('responsible_name'):
+            message += f"   👤 Responsable: {task['responsible_name']}\n"
+
         if task.get('deadline'):
             message += f"   📅 Deadline: {task['deadline_display']}\n"
 
         message += f"   ID: <code>{task['id'][:8]}</code>\n\n"
 
-    if len(tasks) > 10:
-        message += f"\n... y {len(tasks) - 10} tareas más."
+    if len(tasks) > 15:
+        message += f"\n... y {len(tasks) - 15} tareas más."
 
     await update.message.reply_text(message, parse_mode='HTML')
 
@@ -329,6 +383,83 @@ async def semana_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if len(tasks) > 10:
         message += f"\n... y {len(tasks) - 10} tareas más."
+
+    await update.message.reply_text(message, parse_mode='HTML')
+
+
+async def vencidas_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handler del comando /vencidas - Ver tareas vencidas
+    - Usuario normal: Sus tareas vencidas
+    - Administrador: Todas las tareas vencidas de todos los usuarios
+    """
+    chat_id = update.effective_chat.id
+    task_service = TaskService()
+
+    # Verificar que el usuario esté vinculado
+    user = await task_service.get_user_by_chat_id(chat_id)
+    if not user:
+        await update.message.reply_text(
+            "❌ Tu cuenta no está vinculada.\n"
+            "Usa /start CODIGO para vincular tu cuenta."
+        )
+        return
+
+    # Obtener tareas vencidas según rol
+    tasks = await task_service.get_overdue_tasks(user['id'], user['role'])
+
+    if not tasks:
+        if user['role'] == 'administrador':
+            await update.message.reply_text(
+                "✅ No hay tareas vencidas en el sistema.\n"
+                "¡Excelente trabajo del equipo!",
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_text(
+                "✅ No tienes tareas vencidas.\n"
+                "¡Excelente trabajo!",
+                parse_mode='HTML'
+            )
+        return
+
+    # Formatear tareas
+    if user['role'] == 'administrador':
+        message = f"⚠️ <b>Tareas Vencidas - Todos ({len(tasks)})</b>\n\n"
+    else:
+        message = f"⚠️ <b>Tareas Vencidas ({len(tasks)})</b>\n\n"
+
+    for task in tasks[:15]:  # Máximo 15 tareas
+        status_emoji = {
+            'sin_empezar': '⚪',
+            'en_curso': '🔵',
+            'completado': '✅'
+        }.get(task['status'], '⚪')
+
+        priority_emoji = {
+            'baja': '🟢',
+            'media': '🟡',
+            'alta': '🔴'
+        }.get(task['priority'], '🟡')
+
+        message += (
+            f"{status_emoji} {priority_emoji} <b>{task['title']}</b>\n"
+            f"   Proyecto: {task['project_name']}\n"
+        )
+
+        # Si es admin, mostrar responsable
+        if user['role'] == 'administrador' and task.get('responsible_name'):
+            message += f"   👤 Responsable: {task['responsible_name']}\n"
+
+        message += f"   Estado: {task['status_display']}\n"
+
+        if task.get('deadline'):
+            message += f"   📅 Deadline: {task['deadline_display']}\n"
+
+        message += f"   ID: <code>{task['id'][:8]}</code>\n\n"
+
+    if len(tasks) > 15:
+        message += f"\n... y {len(tasks) - 15} tareas más."
 
     await update.message.reply_text(message, parse_mode='HTML')
 

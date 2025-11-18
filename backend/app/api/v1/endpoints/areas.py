@@ -16,6 +16,18 @@ from app.schemas.area import AreaCreate, AreaUpdate, AreaResponse, AreaWithStats
 router = APIRouter()
 
 
+@router.get("/public", response_model=list[AreaResponse])
+def list_areas_public(
+    db: Session = Depends(get_db)
+):
+    """
+    Listar todas las áreas activas (endpoint público para registro).
+    No requiere autenticación.
+    """
+    areas = db.query(Area).filter(Area.is_active == True).all()
+    return areas
+
+
 @router.get("/", response_model=list[AreaResponse])
 def list_areas(
     skip: int = 0,

@@ -6,6 +6,14 @@ import { Area, AreaWithStats, AreaCreate, AreaUpdate } from '../types/api';
 
 const areaService = {
   /**
+   * Obtener áreas públicas (sin autenticación, para registro)
+   */
+  getPublic: async (): Promise<Area[]> => {
+    const response = await apiClient.get<Area[]>('/areas/public');
+    return response.data;
+  },
+
+  /**
    * Obtener todas las áreas
    */
   getAll: async (isActive?: boolean): Promise<Area[]> => {

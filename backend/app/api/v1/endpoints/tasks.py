@@ -373,7 +373,7 @@ def delete_task(
     db: Session = Depends(get_db),
 ):
     """
-    Eliminar tarea (solo dueño del proyecto o administrador)
+    Eliminar tarea (dueño del proyecto, responsable de la tarea o administrador)
 
     Args:
         task_id: ID de la tarea
@@ -381,21 +381,30 @@ def delete_task(
         db: Sesión de base de datos
 
     Raises:
-        HTTPException: Si la tarea no existe o el usuario no es el dueño
+        HTTPException: Si la tarea no existe o el usuario no tiene permiso
     """
-    # Los administradores pueden eliminar cualquier tarea
-    # Otros usuarios solo pueden eliminar tareas de sus proyectos
-    query = db.query(Task).join(Project).filter(Task.id == task_id)
-
-    if current_user.role != "administrador":
-        query = query.filter(Project.owner_id == current_user.id)
-
-    task = query.first()
+    task = db.query(Task).join(Project).filter(Task.id == task_id).first()
 
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarea no encontrada o no tienes permiso para eliminarla"
+            detail="Tarea no encontrada"
+        )
+
+    # Verificar permisos:
+    # - Administrador: puede eliminar cualquier tarea
+    # - Dueño del proyecto: puede eliminar tareas de su proyecto
+    # - Responsable: puede eliminar tareas asignadas a él
+    has_permission = (
+        current_user.role == "administrador" or
+        task.project.owner_id == current_user.id or
+        task.responsible_id == current_user.id
+    )
+
+    if not has_permission:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar esta tarea"
         )
 
     db.delete(task)

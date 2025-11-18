@@ -19,6 +19,7 @@ from app.bot.handlers import (
     hoy_command,
     pendientes_command,
     semana_command,
+    vencidas_command,
     unknown_command,
 )
 
@@ -52,6 +53,7 @@ class TelegramBot:
         self.application.add_handler(CommandHandler("hoy", hoy_command))
         self.application.add_handler(CommandHandler("pendientes", pendientes_command))
         self.application.add_handler(CommandHandler("semana", semana_command))
+        self.application.add_handler(CommandHandler("vencidas", vencidas_command))
 
         # Handler para comandos desconocidos (debe ir al final)
         self.application.add_handler(MessageHandler(

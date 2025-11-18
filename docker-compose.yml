@@ -122,7 +122,7 @@ services:
       dockerfile: Dockerfile
     container_name: sva_telegram_bot
     restart: unless-stopped
-    command: python run_bot.py
+    entrypoint: ["python", "run_bot.py"]
     environment:
       # Database
       MYSQL_HOST: mysql

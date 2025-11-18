@@ -44,27 +44,45 @@ class TaskService:
             logger.error(f"Error al obtener usuario por chat_id: {e}")
             return None
 
-    async def get_user_tasks(self, user_id: str) -> list:
+    async def get_user_tasks(self, user_id: str, user_role: str) -> list:
         """
         Obtener todas las tareas del usuario (no completadas)
+        - Usuario normal: tareas asignadas a él
+        - Administrador: próximas 15 tareas a vencer (de todos los usuarios)
 
         Args:
             user_id: ID del usuario
+            user_role: Rol del usuario (administrador, supervisor, analista)
 
         Returns:
             Lista de tareas
         """
         try:
             with get_db_context() as db:
-                tasks = db.query(Task).join(Project).filter(
-                    Task.responsible_id == user_id,
-                    Task.status != TaskStatus.COMPLETADO
-                ).options(
-                    joinedload(Task.project)
-                ).order_by(
-                    Task.deadline.asc().nullslast(),
-                    Task.priority.desc()
-                ).all()
+                if user_role == 'administrador':
+                    # Administrador: próximas tareas a vencer de todos
+                    now = datetime.utcnow()
+                    tasks = db.query(Task).join(Project).filter(
+                        Task.status != TaskStatus.COMPLETADO,
+                        Task.deadline.isnot(None),
+                        Task.deadline >= now
+                    ).options(
+                        joinedload(Task.project),
+                        joinedload(Task.responsible)
+                    ).order_by(
+                        Task.deadline.asc()
+                    ).limit(15).all()
+                else:
+                    # Usuario normal: sus tareas asignadas
+                    tasks = db.query(Task).join(Project).filter(
+                        Task.responsible_id == user_id,
+                        Task.status != TaskStatus.COMPLETADO
+                    ).options(
+                        joinedload(Task.project)
+                    ).order_by(
+                        Task.deadline.asc().nullslast(),
+                        Task.priority.desc()
+                    ).all()
 
                 return self._format_tasks(tasks)
 
@@ -102,27 +120,43 @@ class TaskService:
             logger.error(f"Error al obtener tareas de hoy: {e}")
             return []
 
-    async def get_pending_tasks(self, user_id: str) -> list:
+    async def get_pending_tasks(self, user_id: str, user_role: str) -> list:
         """
         Obtener tareas sin empezar
+        - Usuario normal: tareas asignadas a él sin empezar
+        - Administrador: todas las tareas sin empezar de todos los usuarios
 
         Args:
             user_id: ID del usuario
+            user_role: Rol del usuario (administrador, supervisor, analista)
 
         Returns:
             Lista de tareas
         """
         try:
             with get_db_context() as db:
-                tasks = db.query(Task).join(Project).filter(
-                    Task.responsible_id == user_id,
-                    Task.status == TaskStatus.SIN_EMPEZAR
-                ).options(
-                    joinedload(Task.project)
-                ).order_by(
-                    Task.deadline.asc().nullslast(),
-                    Task.priority.desc()
-                ).all()
+                if user_role == 'administrador':
+                    # Administrador: todas las tareas sin empezar
+                    tasks = db.query(Task).join(Project).filter(
+                        Task.status == TaskStatus.SIN_EMPEZAR
+                    ).options(
+                        joinedload(Task.project),
+                        joinedload(Task.responsible)
+                    ).order_by(
+                        Task.deadline.asc().nullslast(),
+                        Task.priority.desc()
+                    ).all()
+                else:
+                    # Usuario normal: sus tareas sin empezar
+                    tasks = db.query(Task).join(Project).filter(
+                        Task.responsible_id == user_id,
+                        Task.status == TaskStatus.SIN_EMPEZAR
+                    ).options(
+                        joinedload(Task.project)
+                    ).order_by(
+                        Task.deadline.asc().nullslast(),
+                        Task.priority.desc()
+                    ).all()
 
                 return self._format_tasks(tasks)
 
@@ -158,6 +192,54 @@ class TaskService:
 
         except Exception as e:
             logger.error(f"Error al obtener tareas de la semana: {e}")
+            return []
+
+    async def get_overdue_tasks(self, user_id: str, user_role: str) -> list:
+        """
+        Obtener tareas vencidas (deadline pasado y no completadas)
+        - Usuario normal: tareas vencidas asignadas a él
+        - Administrador: todas las tareas vencidas de todos los usuarios
+
+        Args:
+            user_id: ID del usuario
+            user_role: Rol del usuario (administrador, supervisor, analista)
+
+        Returns:
+            Lista de tareas
+        """
+        try:
+            with get_db_context() as db:
+                now = datetime.utcnow()
+
+                if user_role == 'administrador':
+                    # Administrador: todas las tareas vencidas
+                    tasks = db.query(Task).join(Project).filter(
+                        Task.deadline < now,
+                        Task.status != TaskStatus.COMPLETADO
+                    ).options(
+                        joinedload(Task.project),
+                        joinedload(Task.responsible)
+                    ).order_by(
+                        Task.deadline.asc(),
+                        Task.priority.desc()
+                    ).all()
+                else:
+                    # Usuario normal: sus tareas vencidas
+                    tasks = db.query(Task).join(Project).filter(
+                        Task.responsible_id == user_id,
+                        Task.deadline < now,
+                        Task.status != TaskStatus.COMPLETADO
+                    ).options(
+                        joinedload(Task.project)
+                    ).order_by(
+                        Task.deadline.asc(),
+                        Task.priority.desc()
+                    ).all()
+
+                return self._format_tasks(tasks)
+
+        except Exception as e:
+            logger.error(f"Error al obtener tareas vencidas: {e}")
             return []
 
     async def complete_task(self, user_id: str, task_id: str) -> dict:
@@ -253,6 +335,11 @@ class TaskService:
                 TaskStatus.COMPLETADO: 'Completado'
             }.get(task.status, 'Sin Empezar')
 
+            # Obtener nombre del responsable (si está cargado)
+            responsible_name = None
+            if hasattr(task, 'responsible') and task.responsible:
+                responsible_name = task.responsible.full_name
+
             formatted_tasks.append({
                 'id': task.id,
                 'title': task.title,
@@ -262,7 +349,8 @@ class TaskService:
                 'priority': task.priority.value if hasattr(task.priority, 'value') else task.priority,
                 'project_name': task.project.name if task.project else 'Sin proyecto',
                 'deadline': task.deadline.isoformat() if task.deadline else None,
-                'deadline_display': deadline_display
+                'deadline_display': deadline_display,
+                'responsible_name': responsible_name
             })
 
         return formatted_tasks

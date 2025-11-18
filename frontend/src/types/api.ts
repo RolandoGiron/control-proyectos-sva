@@ -28,6 +28,7 @@ export interface RegisterRequest {
   password: string;
   full_name: string;
   phone_number?: string;
+  area_id?: string; // UUID del área
 }
 
 export interface LoginRequest {

@@ -393,11 +393,11 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
   - [x] Cards clicables para navegar a secciones
   - [x] Loading state mientras carga
 
-- [x] **Perfil de Usuario** ⏳ PARCIAL (Vista completa)
+- [x] **Perfil de Usuario** ✅ COMPLETADO
   - [x] Ver datos de perfil
-  - [ ] Editar perfil (formulario funcional) - PENDIENTE FASE FUTURA
-  - [ ] Cambiar contraseña (formulario funcional) - PENDIENTE FASE FUTURA
-  - [ ] Vincular Telegram (mostrar código/QR) - PENDIENTE FASE 3
+  - [x] Editar perfil (formulario funcional)
+  - [x] Cambiar contraseña (formulario funcional)
+  - [x] Vincular Telegram (generación de código y desvincular)
 
 - [x] **Diseño Responsive** ✅ COMPLETADO
   - [x] Mobile (< 640px)
@@ -415,6 +415,7 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 - ✅ `authService.ts` - Autenticación y perfil
 - ✅ `projectService.ts` - CRUD de proyectos
 - ✅ `taskService.ts` - CRUD de tareas
+- ✅ `telegramService.ts` - Vinculación con Telegram (nuevo)
 
 **Types (`frontend/src/types/`):**
 - ✅ `api.ts` - Interfaces TypeScript completas
@@ -447,6 +448,9 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 **Componentes de Tareas (`frontend/src/components/Tasks/`):** (nuevos)
 - ✅ `TaskForm.tsx`
 - ✅ `TaskCard.tsx`
+
+**Componentes de Perfil (`frontend/src/components/Profile/`):** (nuevos)
+- ✅ `TelegramLinkSection.tsx` - Vinculación con Telegram
 
 **Páginas (`frontend/src/pages/`):**
 - ✅ `Login.tsx`
@@ -938,6 +942,23 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
   - Generar migraciones iniciales desde una base de datos limpia (sin tablas pre-existentes)
   - Eliminar schema.sql una vez que se está usando Alembic completamente
 
+### Problema: Bot de Telegram no se ejecutaba automáticamente
+- **Fecha**: 2024-11-17
+- **Descripción**: El contenedor `telegram_bot` en docker-compose.yml tenía `command: python run_bot.py` pero el script no se ejecutaba. En su lugar, se ejecutaba el `entrypoint.sh` que lanzaba Uvicorn.
+- **Error**: Al revisar los logs del contenedor, se veía que Uvicorn se estaba ejecutando en lugar del bot.
+- **Causa raíz**: En Docker Compose, `command` no sobrescribe el `ENTRYPOINT` definido en el Dockerfile. El Dockerfile del backend tiene `ENTRYPOINT ["./entrypoint.sh"]`, por lo que el `command` era ignorado.
+- **Solución**:
+  - Cambiado `command: python run_bot.py` por `entrypoint: ["python", "run_bot.py"]` en docker-compose.yml
+  - Esto sobrescribe completamente el ENTRYPOINT del Dockerfile
+- **Testing realizado**:
+  - Probado `docker-compose down && docker-compose up -d`
+  - Verificado logs del bot: muestra "✅ Bot iniciado correctamente"
+  - Verificado con `docker ps`: comando muestra "python run_bot.py"
+- **Lecciones aprendidas**:
+  - En Docker Compose, usar `entrypoint` para sobrescribir el ENTRYPOINT del Dockerfile
+  - `command` solo sobrescribe CMD, no ENTRYPOINT
+  - Siempre verificar los logs del contenedor para confirmar que se ejecuta el comando correcto
+
 ---
 
 ## Pendientes y Notas
@@ -965,6 +986,34 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 ---
 
 ## Changelog
+
+### [1.1.0] - 2024-11-17 15:20
+#### Agregado - Vinculación de Telegram desde Perfil
+- ✅ **Frontend: Sistema completo de vinculación con Telegram**
+  - Nuevo servicio `telegramService.ts` con 3 funciones (generateLinkCode, getTelegramStatus, unlinkTelegram)
+  - Nuevo componente `TelegramLinkSection.tsx` (219 líneas)
+    - Generación de código de 6 caracteres con expiración de 15 minutos
+    - Countdown en tiempo real que actualiza cada segundo
+    - Modal con instrucciones paso a paso para vincular
+    - Botón para generar nuevo código si expira
+    - Desvincular cuenta con confirmación
+    - Indicador visual de estado (conectado/desconectado)
+    - Mensajes de éxito/error con iconos
+  - Integrado en página Profile.tsx
+  - Actualización automática del contexto de usuario al desvincular
+- 📝 **Documentación actualizada**:
+  - CLAUDE.md: Sección "Perfil de Usuario" marcada como ✅ COMPLETADA
+  - Agregado telegramService.ts y TelegramLinkSection.tsx a lista de archivos
+
+#### Corregido - Bot de Telegram no se ejecutaba automáticamente
+- 🐛 **Problema crítico resuelto**: Contenedor `telegram_bot` no ejecutaba `run_bot.py`
+  - Causa: `command` en docker-compose.yml no sobrescribe `ENTRYPOINT` del Dockerfile
+  - Solución: Cambiado `command: python run_bot.py` por `entrypoint: ["python", "run_bot.py"]`
+  - Testing: Verificado con `docker-compose down && docker-compose up -d`
+- 📝 **Documentación actualizada**:
+  - Agregada entrada en "Problemas y Soluciones" del CLAUDE.md
+  - Documentadas lecciones aprendidas sobre ENTRYPOINT vs CMD en Docker
+- **Impacto**: Ahora el bot se ejecuta automáticamente al hacer `docker-compose up -d`
 
 ### [1.0.1] - 2024-11-13 23:10
 #### Corregido - Migración de tabla areas

@@ -1,9 +1,11 @@
 /**
  * Register Page - Página de registro de usuario
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import areaService from '../services/areaService';
+import { Area } from '../types/api';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -15,11 +17,30 @@ const Register: React.FC = () => {
     confirmPassword: '',
     full_name: '',
     phone_number: '',
+    area_id: '',
   });
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [loadingAreas, setLoadingAreas] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Cargar áreas al montar el componente
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const areasData = await areaService.getPublic();
+        setAreas(areasData);
+      } catch (err) {
+        console.error('Error al cargar áreas:', err);
+      } finally {
+        setLoadingAreas(false);
+      }
+    };
+
+    fetchAreas();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -50,6 +71,7 @@ const Register: React.FC = () => {
         password: formData.password,
         full_name: formData.full_name,
         phone_number: formData.phone_number || undefined,
+        area_id: formData.area_id || undefined,
       };
 
       await register(registerData);
@@ -122,6 +144,32 @@ const Register: React.FC = () => {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="+52 123 456 7890"
             />
+          </div>
+
+          <div>
+            <label htmlFor="area_id" className="block text-sm font-medium text-gray-700">
+              Área (opcional)
+            </label>
+            {loadingAreas ? (
+              <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-400">
+                Cargando áreas...
+              </div>
+            ) : (
+              <select
+                id="area_id"
+                name="area_id"
+                value={formData.area_id}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white"
+              >
+                <option value="">Seleccionar área...</option>
+                {areas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
