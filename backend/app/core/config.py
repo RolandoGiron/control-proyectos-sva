@@ -40,12 +40,9 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: Optional[str] = None
     CELERY_RESULT_BACKEND: Optional[str] = None
 
-    # CORS
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-    ]
+    # CORS - Permitir todos los orígenes en desarrollo
+    # En producción, especificar solo los dominios permitidos
+    CORS_ORIGINS: list[str] = ["*"]  # Permitir todos los orígenes
 
     # Configuración de recordatorios
     DEFAULT_REMINDER_HOURS: int = 24
