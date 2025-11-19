@@ -231,14 +231,19 @@ def update_task(
         Tarea actualizada
 
     Raises:
-        HTTPException: Si la tarea no existe o el usuario no es el dueño del proyecto
+        HTTPException: Si la tarea no existe o el usuario no tiene permiso
     """
     # Los administradores pueden editar cualquier tarea
-    # Otros usuarios solo pueden editar tareas de sus proyectos
+    # Otros usuarios pueden editar tareas de sus proyectos o asignadas a ellos
     query = db.query(Task).join(Project).filter(Task.id == task_id)
 
     if current_user.role != "administrador":
-        query = query.filter(Project.owner_id == current_user.id)
+        query = query.filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Task.responsible_id == current_user.id
+            )
+        )
 
     task = query.first()
 

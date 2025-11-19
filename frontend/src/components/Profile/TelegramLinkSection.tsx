@@ -184,7 +184,7 @@ const TelegramLinkSection: React.FC = () => {
               <span>
                 Abre Telegram y busca el bot{' '}
                 <strong className="font-mono text-blue-600">
-                  @ControlProyectosSVABot
+                  @control_proyecto_hg_bot
                 </strong>
               </span>
             </li>
