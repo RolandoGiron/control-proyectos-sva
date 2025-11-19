@@ -3,6 +3,7 @@ Servicio de tareas para el bot de Telegram
 """
 import logging
 from datetime import datetime, timedelta
+from sqlalchemy import case
 from sqlalchemy.orm import joinedload
 from app.core.database import get_db_context
 from app.models.user import User
@@ -80,7 +81,8 @@ class TaskService:
                     ).options(
                         joinedload(Task.project)
                     ).order_by(
-                        Task.deadline.asc().nullslast(),
+                        case((Task.deadline.is_(None), 1), else_=0),
+                        Task.deadline.asc(),
                         Task.priority.desc()
                     ).all()
 
@@ -143,7 +145,8 @@ class TaskService:
                         joinedload(Task.project),
                         joinedload(Task.responsible)
                     ).order_by(
-                        Task.deadline.asc().nullslast(),
+                        case((Task.deadline.is_(None), 1), else_=0),
+                        Task.deadline.asc(),
                         Task.priority.desc()
                     ).all()
                 else:
@@ -154,7 +157,8 @@ class TaskService:
                     ).options(
                         joinedload(Task.project)
                     ).order_by(
-                        Task.deadline.asc().nullslast(),
+                        case((Task.deadline.is_(None), 1), else_=0),
+                        Task.deadline.asc(),
                         Task.priority.desc()
                     ).all()
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/Layout/MainLayout';
-import { Task, Project, TaskCreate, TaskUpdate } from '../types/api';
+import { Task, Project, TaskCreate, TaskUpdate, User } from '../types/api';
 import taskService from '../services/taskService';
 import projectService from '../services/projectService';
+import userService from '../services/userService';
 import TaskCard from '../components/Tasks/TaskCard';
 import TaskForm from '../components/Tasks/TaskForm';
 import Modal from '../components/common/Modal';
@@ -14,6 +15,7 @@ type ViewMode = 'list' | 'kanban';
 const Tasks: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +27,7 @@ const Tasks: React.FC = () => {
   const [filterProject, setFilterProject] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [filterResponsible, setFilterResponsible] = useState('');
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
 
   // Modals
@@ -39,12 +42,12 @@ const Tasks: React.FC = () => {
 
   useEffect(() => {
     loadTasks();
-  }, [filterProject, filterStatus, filterPriority]);
+  }, [filterProject, filterStatus, filterPriority, filterResponsible]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      await Promise.all([loadProjects(), loadTasks()]);
+      await Promise.all([loadProjects(), loadUsers(), loadTasks()]);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Error al cargar datos');
     } finally {
@@ -61,12 +64,22 @@ const Tasks: React.FC = () => {
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      const data = await userService.getAll();
+      setUsers(data);
+    } catch (err: any) {
+      console.error('Error loading users:', err);
+    }
+  };
+
   const loadTasks = async () => {
     try {
       const filters: any = {};
       if (filterProject) filters.project_id = filterProject;
       if (filterStatus) filters.status = filterStatus;
       if (filterPriority) filters.priority = filterPriority;
+      if (filterResponsible) filters.responsible_id = filterResponsible;
 
       const data = await taskService.getAll(filters);
       setTasks(data);
@@ -176,6 +189,14 @@ const Tasks: React.FC = () => {
     })),
   ];
 
+  const responsibleOptions = [
+    { value: '', label: 'Todos los responsables' },
+    ...users.map((u) => ({
+      value: u.id,
+      label: u.full_name,
+    })),
+  ];
+
   if (loading) {
     return (
       <MainLayout>
@@ -234,7 +255,7 @@ const Tasks: React.FC = () => {
               </div>
 
               {/* Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:w-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:w-auto">
                 <Select
                   value={filterProject}
                   onChange={setFilterProject}
@@ -252,6 +273,12 @@ const Tasks: React.FC = () => {
                   onChange={setFilterPriority}
                   options={priorityOptions}
                   placeholder="Prioridad"
+                />
+                <Select
+                  value={filterResponsible}
+                  onChange={setFilterResponsible}
+                  options={responsibleOptions}
+                  placeholder="Responsable"
                 />
               </div>
             </div>

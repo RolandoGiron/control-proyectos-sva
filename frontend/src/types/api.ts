@@ -82,6 +82,7 @@ export interface Project {
   emoji_icon?: string;
   owner_id: string; // UUID
   area_id?: string; // UUID
+  area?: Area; // Información completa del área
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -123,6 +124,10 @@ export interface Task {
   created_by: string; // UUID
   created_at: string;
   updated_at: string;
+  // Campos adicionales de TaskWithDetails
+  project_name?: string;
+  responsible_name?: string;
+  creator_name?: string;
 }
 
 export interface TaskCreate {

@@ -16,7 +16,7 @@ from app.schemas import TaskCreate, TaskUpdate, TaskStatusUpdate, TaskResponse, 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[TaskResponse])
+@router.get("/", response_model=list[TaskWithDetails])
 def list_tasks(
     project_id: Optional[str] = Query(None),
     status: Optional[TaskStatus] = Query(None),
@@ -28,7 +28,7 @@ def list_tasks(
     db: Session = Depends(get_db),
 ):
     """
-    Listar tareas con filtros
+    Listar tareas con filtros e información detallada (proyecto, responsable, creador)
 
     Args:
         project_id: Filtrar por proyecto
@@ -41,7 +41,7 @@ def list_tasks(
         db: Sesión de base de datos
 
     Returns:
-        Lista de tareas
+        Lista de tareas con información detallada
     """
     # Query base:
     # - Administradores ven todas las tareas
@@ -67,7 +67,35 @@ def list_tasks(
         query = query.filter(Task.responsible_id == responsible_id)
 
     tasks = query.order_by(Task.created_at.desc()).offset(skip).limit(limit).all()
-    return tasks
+
+    # Enriquecer tareas con información adicional
+    tasks_with_details = []
+    for task in tasks:
+        # Obtener información del proyecto
+        project = db.query(Project).filter(Project.id == task.project_id).first()
+
+        # Obtener información del responsable
+        responsible_name = None
+        if task.responsible_id:
+            responsible = db.query(User).filter(User.id == task.responsible_id).first()
+            if responsible:
+                responsible_name = responsible.full_name
+
+        # Obtener información del creador
+        creator = db.query(User).filter(User.id == task.created_by).first()
+        creator_name = creator.full_name if creator else None
+
+        # Crear diccionario con todos los campos
+        task_dict = {
+            **task.__dict__,
+            "project_name": project.name if project else None,
+            "responsible_name": responsible_name,
+            "creator_name": creator_name,
+        }
+
+        tasks_with_details.append(task_dict)
+
+    return tasks_with_details
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)

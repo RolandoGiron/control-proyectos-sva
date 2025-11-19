@@ -4,7 +4,7 @@ Endpoints de Proyectos
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from app.core.database import get_db
 from app.api.dependencies import get_current_user
@@ -29,7 +29,7 @@ def list_projects(
     Listar proyectos según el rol del usuario:
     - Administrador: Ve todos los proyectos
     - Supervisor: Ve proyectos de su área
-    - Analista: Ve solo sus propios proyectos
+    - Analista: Ve proyectos que le pertenecen O donde tiene tareas asignadas
 
     Args:
         skip: Número de registros a saltar
@@ -57,8 +57,13 @@ def list_projects(
             # Si no tiene área asignada, no ve ningún proyecto
             query = query.filter(False)
     else:
-        # Analista ve solo sus propios proyectos
-        query = query.filter(Project.owner_id == current_user.id)
+        # Analista ve proyectos que le pertenecen O donde tiene tareas asignadas
+        query = query.outerjoin(Task, Project.id == Task.project_id).filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Task.responsible_id == current_user.id
+            )
+        ).distinct()
 
     if not include_archived:
         query = query.filter(Project.is_archived == False)
@@ -104,7 +109,13 @@ def list_projects_with_stats(
         else:
             query = query.filter(False)
     else:
-        query = query.filter(Project.owner_id == current_user.id)
+        # Analista ve proyectos que le pertenecen O donde tiene tareas asignadas
+        query = query.outerjoin(Task, Project.id == Task.project_id).filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Task.responsible_id == current_user.id
+            )
+        ).distinct()
 
     if not include_archived:
         query = query.filter(Project.is_archived == False)
