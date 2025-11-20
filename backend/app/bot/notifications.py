@@ -268,7 +268,7 @@ class NotificationService:
 
 
 # ==============================================================================
-# Helper function para Celery workers
+# Helper functions para enviar notificaciones
 # ==============================================================================
 
 async def send_telegram_notification(user_id: str, message: str, db):
@@ -320,3 +320,187 @@ async def send_telegram_notification(user_id: str, message: str, db):
     except Exception as e:
         logger.error(f"Error al enviar notificación a usuario {user_id}: {str(e)}")
         return False
+
+
+def send_task_assignment_notification(task: Task, responsible: User, creator: User, db):
+    """
+    Envía notificación síncrona cuando se asigna una tarea.
+    Esta función se puede llamar desde endpoints FastAPI.
+
+    Args:
+        task: Tarea asignada
+        responsible: Usuario responsable
+        creator: Usuario que asignó la tarea
+        db: Sesión de base de datos
+    """
+    import asyncio
+    import os
+    from telegram import Bot
+
+    try:
+        if not responsible.telegram_chat_id:
+            logger.info(f"Usuario {responsible.email} no tiene Telegram vinculado")
+            return
+
+        # Formatear deadline
+        deadline_text = "Sin deadline"
+        if task.deadline:
+            deadline_text = task.deadline.strftime('%d/%m/%Y %H:%M')
+
+        # Emoji de prioridad
+        priority_emoji = {
+            'baja': '🟢',
+            'media': '🟡',
+            'alta': '🔴'
+        }.get(task.priority.value if hasattr(task.priority, 'value') else task.priority, '🟡')
+
+        # Obtener nombre del proyecto
+        project_name = "Sin proyecto"
+        if task.project_id:
+            project = db.query(Project).filter(Project.id == task.project_id).first()
+            if project:
+                project_name = project.name
+
+        message = (
+            f"📋 <b>Nueva Tarea Asignada</b>\n\n"
+            f"{priority_emoji} <b>{task.title}</b>\n\n"
+            f"📁 Proyecto: {project_name}\n"
+            f"👤 Asignada por: {creator.full_name}\n"
+            f"📅 Deadline: {deadline_text}\n\n"
+        )
+
+        if task.description:
+            # Truncar descripción si es muy larga
+            desc = task.description[:200]
+            if len(task.description) > 200:
+                desc += "..."
+            message += f"📝 Descripción:\n{desc}\n\n"
+
+        message += f"💡 ID: <code>{task.id[:8]}</code>"
+
+        # Obtener token del bot
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        if not bot_token:
+            logger.error("TELEGRAM_BOT_TOKEN no configurado")
+            return
+
+        # Crear bot y enviar mensaje de forma síncrona
+        async def send():
+            bot = Bot(token=bot_token)
+            await bot.send_message(
+                chat_id=responsible.telegram_chat_id,
+                text=message,
+                parse_mode='HTML'
+            )
+
+        # Ejecutar en un nuevo event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(send())
+            logger.info(f"Notificación de nueva tarea enviada a {responsible.email}")
+        finally:
+            loop.close()
+
+    except Exception as e:
+        logger.error(f"Error al enviar notificación de tarea asignada: {str(e)}")
+
+
+def send_task_reassignment_notification(
+    task: Task,
+    old_responsible: Optional[User],
+    new_responsible: User,
+    changed_by: User,
+    db
+):
+    """
+    Envía notificación cuando se reasigna una tarea a otro usuario.
+
+    Args:
+        task: Tarea reasignada
+        old_responsible: Usuario responsable anterior (puede ser None)
+        new_responsible: Nuevo usuario responsable
+        changed_by: Usuario que hizo el cambio
+        db: Sesión de base de datos
+    """
+    import asyncio
+    import os
+    from telegram import Bot
+
+    try:
+        if not new_responsible.telegram_chat_id:
+            logger.info(f"Usuario {new_responsible.email} no tiene Telegram vinculado")
+            return
+
+        # Formatear deadline
+        deadline_text = "Sin deadline"
+        if task.deadline:
+            deadline_text = task.deadline.strftime('%d/%m/%Y %H:%M')
+
+        # Emoji de prioridad
+        priority_emoji = {
+            'baja': '🟢',
+            'media': '🟡',
+            'alta': '🔴'
+        }.get(task.priority.value if hasattr(task.priority, 'value') else task.priority, '🟡')
+
+        # Obtener nombre del proyecto
+        project_name = "Sin proyecto"
+        if task.project_id:
+            project = db.query(Project).filter(Project.id == task.project_id).first()
+            if project:
+                project_name = project.name
+
+        # Mensaje diferente si es reasignación o primera asignación
+        if old_responsible:
+            message = (
+                f"🔄 <b>Tarea Reasignada</b>\n\n"
+                f"{priority_emoji} <b>{task.title}</b>\n\n"
+                f"📁 Proyecto: {project_name}\n"
+                f"👤 Reasignada por: {changed_by.full_name}\n"
+                f"📅 Deadline: {deadline_text}\n\n"
+            )
+        else:
+            message = (
+                f"📋 <b>Nueva Tarea Asignada</b>\n\n"
+                f"{priority_emoji} <b>{task.title}</b>\n\n"
+                f"📁 Proyecto: {project_name}\n"
+                f"👤 Asignada por: {changed_by.full_name}\n"
+                f"📅 Deadline: {deadline_text}\n\n"
+            )
+
+        if task.description:
+            # Truncar descripción si es muy larga
+            desc = task.description[:200]
+            if len(task.description) > 200:
+                desc += "..."
+            message += f"📝 Descripción:\n{desc}\n\n"
+
+        message += f"💡 ID: <code>{task.id[:8]}</code>"
+
+        # Obtener token del bot
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        if not bot_token:
+            logger.error("TELEGRAM_BOT_TOKEN no configurado")
+            return
+
+        # Crear bot y enviar mensaje de forma síncrona
+        async def send():
+            bot = Bot(token=bot_token)
+            await bot.send_message(
+                chat_id=new_responsible.telegram_chat_id,
+                text=message,
+                parse_mode='HTML'
+            )
+
+        # Ejecutar en un nuevo event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(send())
+            logger.info(f"Notificación de tarea reasignada enviada a {new_responsible.email}")
+        finally:
+            loop.close()
+
+    except Exception as e:
+        logger.error(f"Error al enviar notificación de tarea reasignada: {str(e)}")

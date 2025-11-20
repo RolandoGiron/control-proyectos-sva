@@ -1,17 +1,21 @@
 """
 Endpoints de Tareas
 """
+import logging
 from typing import Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
 
+logger = logging.getLogger(__name__)
+
 from app.core.database import get_db
 from app.api.dependencies import get_current_user
 from app.models import User, Project, Task
 from app.models.task import TaskStatus, TaskPriority
 from app.schemas import TaskCreate, TaskUpdate, TaskStatusUpdate, TaskResponse, TaskWithDetails
+from app.bot.notifications import send_task_assignment_notification, send_task_reassignment_notification
 
 router = APIRouter()
 
@@ -163,7 +167,13 @@ def create_task(
     db.commit()
     db.refresh(db_task)
 
-    # TODO: Enviar notificación Telegram al responsable (Fase 3)
+    # Enviar notificación Telegram al responsable
+    if task_data.responsible_id:
+        try:
+            send_task_assignment_notification(db_task, responsible, current_user, db)
+        except Exception as e:
+            # Log error pero no fallar la creación de la tarea
+            logger.error(f"Error al enviar notificación de Telegram: {str(e)}")
 
     return db_task
 
@@ -256,6 +266,12 @@ def update_task(
     # Actualizar campos - usar exclude_unset para distinguir entre None enviado vs campo no enviado
     update_data = task_update.model_dump(exclude_unset=True)
 
+    # Guardar responsable anterior para notificación
+    old_responsible_id = task.responsible_id
+    old_responsible = None
+    if old_responsible_id:
+        old_responsible = db.query(User).filter(User.id == old_responsible_id).first()
+
     if 'title' in update_data:
         task.title = update_data['title']
     if 'description' in update_data:
@@ -272,14 +288,25 @@ def update_task(
         task.priority = update_data['priority']
     if 'responsible_id' in update_data:
         # Validar que el usuario exista si se proporciona un ID (no null)
+        new_responsible = None
         if update_data['responsible_id']:
-            responsible = db.query(User).filter(User.id == update_data['responsible_id']).first()
-            if not responsible:
+            new_responsible = db.query(User).filter(User.id == update_data['responsible_id']).first()
+            if not new_responsible:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Usuario responsable no encontrado"
                 )
         task.responsible_id = update_data['responsible_id']
+
+        # Enviar notificación si cambió el responsable
+        if old_responsible_id != update_data['responsible_id'] and new_responsible:
+            try:
+                send_task_reassignment_notification(
+                    task, old_responsible, new_responsible, current_user, db
+                )
+            except Exception as e:
+                # Log error pero no fallar la actualización
+                logger.error(f"Error al enviar notificación de Telegram: {str(e)}")
     if 'deadline' in update_data:
         task.deadline = update_data['deadline']
     if 'reminder_hours_before' in update_data:
