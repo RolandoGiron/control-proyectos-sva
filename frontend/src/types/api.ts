@@ -121,6 +121,7 @@ export interface Task {
   deadline?: string; // ISO datetime
   reminder_hours_before?: number;
   completed_at?: string; // ISO datetime
+  is_archived: boolean;
   created_by: string; // UUID
   created_at: string;
   updated_at: string;

@@ -26,6 +26,7 @@ def list_tasks(
     status: Optional[TaskStatus] = Query(None),
     priority: Optional[TaskPriority] = Query(None),
     responsible_id: Optional[str] = Query(None),
+    include_archived: bool = Query(False, description="Incluir tareas archivadas en el listado"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     current_user: User = Depends(get_current_user),
@@ -39,6 +40,7 @@ def list_tasks(
         status: Filtrar por estado
         priority: Filtrar por prioridad
         responsible_id: Filtrar por responsable
+        include_archived: Incluir tareas archivadas (por defecto False)
         skip: Número de registros a saltar
         limit: Número máximo de registros a retornar
         current_user: Usuario autenticado
@@ -59,6 +61,10 @@ def list_tasks(
                 Task.responsible_id == current_user.id
             )
         )
+
+    # Por defecto, excluir tareas archivadas
+    if not include_archived:
+        query = query.filter(Task.is_archived == False)
 
     # Aplicar filtros
     if project_id:
@@ -471,3 +477,87 @@ def delete_task(
     db.commit()
 
     return None
+
+
+@router.patch("/{task_id}/archive", response_model=TaskResponse)
+def archive_task(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Archivar tarea (solo dueño del proyecto o administrador)
+
+    Args:
+        task_id: ID de la tarea
+        current_user: Usuario autenticado
+        db: Sesión de base de datos
+
+    Returns:
+        Tarea archivada
+
+    Raises:
+        HTTPException: Si la tarea no existe o el usuario no tiene permiso
+    """
+    # Los administradores pueden archivar cualquier tarea
+    # Otros usuarios solo pueden archivar tareas de sus proyectos
+    query = db.query(Task).join(Project).filter(Task.id == task_id)
+
+    if current_user.role != "administrador":
+        query = query.filter(Project.owner_id == current_user.id)
+
+    task = query.first()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tarea no encontrada o no tienes permiso para archivarla"
+        )
+
+    task.is_archived = True
+    db.commit()
+    db.refresh(task)
+
+    return task
+
+
+@router.patch("/{task_id}/unarchive", response_model=TaskResponse)
+def unarchive_task(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Desarchivar tarea (solo dueño del proyecto o administrador)
+
+    Args:
+        task_id: ID de la tarea
+        current_user: Usuario autenticado
+        db: Sesión de base de datos
+
+    Returns:
+        Tarea desarchivada
+
+    Raises:
+        HTTPException: Si la tarea no existe o el usuario no tiene permiso
+    """
+    # Los administradores pueden desarchivar cualquier tarea
+    # Otros usuarios solo pueden desarchivar tareas de sus proyectos
+    query = db.query(Task).join(Project).filter(Task.id == task_id)
+
+    if current_user.role != "administrador":
+        query = query.filter(Project.owner_id == current_user.id)
+
+    task = query.first()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tarea no encontrada o no tienes permiso para desarchivarla"
+        )
+
+    task.is_archived = False
+    db.commit()
+    db.refresh(task)
+
+    return task

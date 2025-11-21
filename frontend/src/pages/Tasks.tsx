@@ -32,6 +32,7 @@ const Tasks: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState('');
   const [filterResponsible, setFilterResponsible] = useState('');
   const [showOverdueOnly, setShowOverdueOnly] = useState(searchParams.get('overdue') === 'true');
+  const [showArchived, setShowArchived] = useState(false);
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -45,7 +46,7 @@ const Tasks: React.FC = () => {
 
   useEffect(() => {
     loadTasks();
-  }, [filterProject, filterStatus, filterPriority, filterResponsible]);
+  }, [filterProject, filterStatus, filterPriority, filterResponsible, showArchived]);
 
   const loadData = async () => {
     try {
@@ -83,6 +84,7 @@ const Tasks: React.FC = () => {
       if (filterStatus) filters.status = filterStatus;
       if (filterPriority) filters.priority = filterPriority;
       if (filterResponsible) filters.responsible_id = filterResponsible;
+      filters.include_archived = showArchived;
 
       const data = await taskService.getAll(filters);
       setTasks(data);
@@ -124,6 +126,19 @@ const Tasks: React.FC = () => {
       await loadTasks();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Error al completar tarea');
+    }
+  };
+
+  const handleArchiveTask = async (task: Task) => {
+    try {
+      if (task.is_archived) {
+        await taskService.unarchive(task.id);
+      } else {
+        await taskService.archive(task.id);
+      }
+      await loadTasks();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al archivar/desarchivar tarea');
     }
   };
 
@@ -286,21 +301,38 @@ const Tasks: React.FC = () => {
               </div>
             </div>
 
-            {/* Second Row: View Toggle and Overdue Filter */}
+            {/* Second Row: View Toggle and Filters */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              {/* Overdue Filter */}
-              <button
-                onClick={() => setShowOverdueOnly(!showOverdueOnly)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${showOverdueOnly
-                  ? 'bg-red-100 text-red-700 border border-red-300'
-                  : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
-                  }`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                {showOverdueOnly ? 'Mostrando solo vencidas' : 'Mostrar solo vencidas'}
-              </button>
+              {/* Filter Buttons */}
+              <div className="flex flex-wrap gap-2">
+                {/* Overdue Filter */}
+                <button
+                  onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${showOverdueOnly
+                    ? 'bg-red-100 text-red-700 border border-red-300'
+                    : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                    }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  {showOverdueOnly ? 'Mostrando solo vencidas' : 'Mostrar solo vencidas'}
+                </button>
+
+                {/* Archived Filter */}
+                <button
+                  onClick={() => setShowArchived(!showArchived)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${showArchived
+                    ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                    : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                    }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                  {showArchived ? 'Mostrando archivadas' : 'Mostrar archivadas'}
+                </button>
+              </div>
 
               {/* View Toggle */}
               <div className="flex border border-gray-300 rounded-lg overflow-hidden">
@@ -372,6 +404,7 @@ const Tasks: React.FC = () => {
                     onEdit={openEditModal}
                     onDelete={openDeleteModal}
                     onComplete={handleCompleteTask}
+                    onArchive={handleArchiveTask}
                   />
                 ))}
               </div>
@@ -397,6 +430,7 @@ const Tasks: React.FC = () => {
                         onEdit={openEditModal}
                         onDelete={openDeleteModal}
                         onComplete={handleCompleteTask}
+                        onArchive={handleArchiveTask}
                       />
                     ))}
                   </div>
@@ -419,6 +453,7 @@ const Tasks: React.FC = () => {
                         onEdit={openEditModal}
                         onDelete={openDeleteModal}
                         onComplete={handleCompleteTask}
+                        onArchive={handleArchiveTask}
                       />
                     ))}
                   </div>
@@ -441,6 +476,7 @@ const Tasks: React.FC = () => {
                         onEdit={openEditModal}
                         onDelete={openDeleteModal}
                         onComplete={handleCompleteTask}
+                        onArchive={handleArchiveTask}
                       />
                     ))}
                   </div>

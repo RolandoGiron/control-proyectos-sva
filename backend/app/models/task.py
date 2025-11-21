@@ -2,7 +2,7 @@
 Modelo de Tarea
 """
 import uuid
-from sqlalchemy import Column, String, Text, Enum, DateTime, TIMESTAMP, ForeignKey, Integer
+from sqlalchemy import Column, String, Text, Enum, DateTime, TIMESTAMP, ForeignKey, Integer, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -59,6 +59,7 @@ class Task(Base):
     deadline = Column(DateTime, nullable=True, index=True)
     reminder_hours_before = Column(Integer, default=24, nullable=True)
     completed_at = Column(DateTime, nullable=True)
+    is_archived = Column(Boolean, default=False, nullable=False, index=True)
     created_by = Column(
         String(36),
         ForeignKey("users.id", ondelete="RESTRICT"),

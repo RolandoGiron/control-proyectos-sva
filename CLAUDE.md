@@ -8,7 +8,7 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 - **Fecha Inicio**: Noviembre 10, 2024
 - **Duración Estimada**: 5 semanas (acelerada)
 - **Estado Actual**: FASE 5 PRÓXIMAMENTE - Cache y Optimización
-- **Última Actualización**: 2024-11-12 19:15 UTC
+- **Última Actualización**: 2024-11-21 00:45 UTC
 
 ---
 
@@ -76,6 +76,7 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 - `deadline` - DATETIME
 - `reminder_hours_before` - INT, DEFAULT 24 (horas antes del deadline para recordatorio)
 - `completed_at` - DATETIME, NULLABLE
+- `is_archived` - BOOLEAN, DEFAULT FALSE ⚠️ Nuevo campo agregado
 - `created_by` - **CHAR(36)** (UUID), FK -> users(id) ⚠️ Cambiado a UUID
 - `created_at` - TIMESTAMP
 - `updated_at` - TIMESTAMP
@@ -986,6 +987,48 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
 ---
 
 ## Changelog
+
+### [1.2.0] - 2024-11-21 00:45
+#### Agregado - Feature de Archivo de Tareas Completadas
+- ✅ **Backend: Sistema completo de archivo de tareas**
+  - Nuevo campo `is_archived` en tabla `tasks` (BOOLEAN, DEFAULT FALSE)
+  - Migración de Alembic `9b7ce5d38f19_add_is_archived_to_tasks.py`
+  - Modelo SQLAlchemy Task actualizado con campo `is_archived` e índice
+  - Schemas Pydantic actualizados (TaskResponse incluye `is_archived`)
+  - Nuevos endpoints:
+    - `PATCH /api/v1/tasks/{id}/archive` - Archivar tarea
+    - `PATCH /api/v1/tasks/{id}/unarchive` - Desarchivar tarea
+  - Endpoint de listado actualizado con parámetro `include_archived` (default: False)
+  - Validación de permisos: solo dueño del proyecto o administrador puede archivar/desarchivar
+
+- ✅ **Frontend: Interfaz completa para gestión de tareas archivadas**
+  - taskService.ts actualizado con métodos `archive()` y `unarchive()`
+  - Interface Task en types/api.ts incluye campo `is_archived`
+  - TaskCard.tsx:
+    - Nuevo botón "Archivar/Desarchivar" en menú dropdown
+    - Icono de archivo con condicional según estado (archivado/no archivado)
+    - Handler `onArchive` integrado
+  - Tasks.tsx:
+    - Nuevo toggle "Mostrar archivadas" en sección de filtros
+    - Estado `showArchived` sincronizado con API
+    - Handler `handleArchiveTask` con lógica condicional (archive/unarchive)
+    - Botón con estilos visuales (azul cuando activo)
+    - Integración en vistas Lista y Kanban
+
+- 🎯 **Funcionalidad**:
+  - Por defecto, las tareas archivadas están ocultas en el listado
+  - Toggle "Mostrar archivadas" permite ver tareas archivadas y no archivadas juntas
+  - Botón "Archivar" disponible en menú de cada tarea
+  - Archivar cambia el estado sin eliminar permanentemente la tarea
+  - Desarchivar restaura la tarea al listado principal
+  - Filtro se mantiene sincronizado con el backend vía parámetro `include_archived`
+
+- 📝 **Documentación actualizada**:
+  - Agregada migración de Alembic documentada
+  - Endpoints documentados en Swagger/ReDoc
+  - CLAUDE.md actualizado con nueva feature
+
+- **Impacto**: Los usuarios pueden limpiar la vista de tareas completadas archivándolas, sin perder el registro histórico. Mejora la organización y reduce el ruido visual en proyectos con muchas tareas completadas.
 
 ### [1.1.0] - 2024-11-17 15:20
 #### Agregado - Vinculación de Telegram desde Perfil

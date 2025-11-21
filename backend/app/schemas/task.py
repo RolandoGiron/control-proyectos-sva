@@ -70,6 +70,7 @@ class TaskResponse(TaskBase):
     id: str
     project_id: str
     completed_at: Optional[datetime] = None
+    is_archived: bool = False
     created_by: str
     created_at: datetime
     updated_at: datetime

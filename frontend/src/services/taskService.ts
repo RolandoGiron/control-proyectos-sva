@@ -16,6 +16,7 @@ interface TaskFilters {
   status?: TaskStatus;
   priority?: TaskPriority;
   responsible_id?: string;
+  include_archived?: boolean;
   skip?: number;
   limit?: number;
 }
@@ -31,6 +32,7 @@ const taskService = {
     if (filters?.status) params.append('status', filters.status);
     if (filters?.priority) params.append('priority', filters.priority);
     if (filters?.responsible_id) params.append('responsible_id', filters.responsible_id);
+    if (filters?.include_archived !== undefined) params.append('include_archived', filters.include_archived.toString());
     if (filters?.skip !== undefined) params.append('skip', filters.skip.toString());
     if (filters?.limit !== undefined) params.append('limit', filters.limit.toString());
 
@@ -86,6 +88,22 @@ const taskService = {
    */
   complete: async (id: string): Promise<Task> => {
     const response = await apiClient.patch<Task>(`/tasks/${id}/complete`);
+    return response.data;
+  },
+
+  /**
+   * Archivar una tarea
+   */
+  archive: async (id: string): Promise<Task> => {
+    const response = await apiClient.patch<Task>(`/tasks/${id}/archive`);
+    return response.data;
+  },
+
+  /**
+   * Desarchivar una tarea
+   */
+  unarchive: async (id: string): Promise<Task> => {
+    const response = await apiClient.patch<Task>(`/tasks/${id}/unarchive`);
     return response.data;
   },
 };
