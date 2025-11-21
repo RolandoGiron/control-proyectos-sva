@@ -49,6 +49,7 @@ Sistema completo de gestión de proyectos y tareas con interfaz web responsive, 
   - Proyectos recientes (últimos 5)
   - Próximas tareas (5 con deadline más cercano)
   - Badges de estado y prioridad
+  - Navegación inteligente desde cards con filtros automáticos
 - ✅ Componentes reutilizables (Modal, Button, Input, Textarea, EmojiPicker, Select, Badge, UserAutocomplete)
 - ✅ Servicios de API conectados al backend
 - ✅ Protección de rutas con PrivateRoute

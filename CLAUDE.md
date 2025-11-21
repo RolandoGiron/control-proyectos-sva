@@ -390,7 +390,7 @@ Este archivo registra el progreso del desarrollo del sistema por fases, decision
   - [x] Próximas tareas (5 tareas con deadline más cercano)
   - [x] Badges de estado y prioridad en tareas
   - [x] Indicadores de urgencia (Vencido, Hoy, Mañana, En X días)
-  - [x] Cards clicables para navegar a secciones
+  - [x] Cards clicables para navegar a secciones con filtros pre-aplicados (vencidas, pendientes, en progreso, completadas)
   - [x] Loading state mientras carga
 
 - [x] **Perfil de Usuario** ✅ COMPLETADO

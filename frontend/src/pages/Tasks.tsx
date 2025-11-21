@@ -10,7 +10,7 @@ import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import Select from '../components/common/Select';
 
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 type ViewMode = 'list' | 'kanban';
 
@@ -138,11 +138,11 @@ const Tasks: React.FC = () => {
   };
 
   const getProjectById = (projectId: string): Project | undefined => {
-    return projects.find((p) => p.id === projectId);
+    return projects.find((p: Project) => p.id === projectId);
   };
 
   // Filter tasks by search term and overdue status
-  const filteredTasks = tasks.filter((task) => {
+  const filteredTasks = tasks.filter((task: Task) => {
     // Search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
@@ -165,9 +165,9 @@ const Tasks: React.FC = () => {
 
   // Group tasks by status for Kanban view
   const tasksByStatus = {
-    sin_empezar: filteredTasks.filter((t) => t.status === 'sin_empezar'),
-    en_curso: filteredTasks.filter((t) => t.status === 'en_curso'),
-    completado: filteredTasks.filter((t) => t.status === 'completado'),
+    sin_empezar: filteredTasks.filter((t: Task) => t.status === 'sin_empezar'),
+    en_curso: filteredTasks.filter((t: Task) => t.status === 'en_curso'),
+    completado: filteredTasks.filter((t: Task) => t.status === 'completado'),
   };
 
   const statusOptions = [
@@ -186,7 +186,7 @@ const Tasks: React.FC = () => {
 
   const projectOptions = [
     { value: '', label: 'Todos los proyectos' },
-    ...projects.map((p) => ({
+    ...projects.map((p: Project) => ({
       value: p.id,
       label: `${p.emoji_icon || '📁'} ${p.name}`,
     })),
@@ -194,7 +194,7 @@ const Tasks: React.FC = () => {
 
   const responsibleOptions = [
     { value: '', label: 'Todos los responsables' },
-    ...users.map((u) => ({
+    ...users.map((u: User) => ({
       value: u.id,
       label: u.full_name,
     })),
@@ -252,7 +252,7 @@ const Tasks: React.FC = () => {
                   type="text"
                   placeholder="Buscar tareas..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -292,8 +292,8 @@ const Tasks: React.FC = () => {
               <button
                 onClick={() => setShowOverdueOnly(!showOverdueOnly)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${showOverdueOnly
-                    ? 'bg-red-100 text-red-700 border border-red-300'
-                    : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                  ? 'bg-red-100 text-red-700 border border-red-300'
+                  : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
                   }`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,8 +307,8 @@ const Tasks: React.FC = () => {
                 <button
                   onClick={() => setViewMode('list')}
                   className={`px-4 py-2 text-sm font-medium ${viewMode === 'list'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   title="Vista Lista"
                 >
@@ -319,8 +319,8 @@ const Tasks: React.FC = () => {
                 <button
                   onClick={() => setViewMode('kanban')}
                   className={`px-4 py-2 text-sm font-medium border-l border-gray-300 ${viewMode === 'kanban'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   title="Vista Kanban"
                 >
