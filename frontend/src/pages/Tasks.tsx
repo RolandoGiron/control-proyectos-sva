@@ -10,9 +10,12 @@ import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import Select from '../components/common/Select';
 
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 type ViewMode = 'list' | 'kanban';
 
 const Tasks: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -25,10 +28,10 @@ const Tasks: React.FC = () => {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProject, setFilterProject] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
   const [filterPriority, setFilterPriority] = useState('');
   const [filterResponsible, setFilterResponsible] = useState('');
-  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+  const [showOverdueOnly, setShowOverdueOnly] = useState(searchParams.get('overdue') === 'true');
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -288,11 +291,10 @@ const Tasks: React.FC = () => {
               {/* Overdue Filter */}
               <button
                 onClick={() => setShowOverdueOnly(!showOverdueOnly)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  showOverdueOnly
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${showOverdueOnly
                     ? 'bg-red-100 text-red-700 border border-red-300'
                     : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -304,11 +306,10 @@ const Tasks: React.FC = () => {
               <div className="flex border border-gray-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`px-4 py-2 text-sm font-medium ${
-                    viewMode === 'list'
+                  className={`px-4 py-2 text-sm font-medium ${viewMode === 'list'
                       ? 'bg-blue-500 text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                    }`}
                   title="Vista Lista"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -317,11 +318,10 @@ const Tasks: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setViewMode('kanban')}
-                  className={`px-4 py-2 text-sm font-medium border-l border-gray-300 ${
-                    viewMode === 'kanban'
+                  className={`px-4 py-2 text-sm font-medium border-l border-gray-300 ${viewMode === 'kanban'
                       ? 'bg-blue-500 text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                    }`}
                   title="Vista Kanban"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
