@@ -144,6 +144,7 @@ const Dashboard: React.FC = () => {
       bgColor: 'bg-blue-50',
       textColor: 'text-blue-600',
       borderColor: 'border-blue-200',
+      path: '/projects',
     },
     {
       title: 'Tareas Vencidas',
@@ -156,6 +157,7 @@ const Dashboard: React.FC = () => {
       bgColor: 'bg-red-50',
       textColor: 'text-red-600',
       borderColor: 'border-red-200',
+      path: '/tasks?overdue=true',
     },
     {
       title: 'Tareas Pendientes',
@@ -168,6 +170,7 @@ const Dashboard: React.FC = () => {
       bgColor: 'bg-yellow-50',
       textColor: 'text-yellow-600',
       borderColor: 'border-yellow-200',
+      path: '/tasks?status=sin_empezar',
     },
     {
       title: 'En Progreso',
@@ -180,6 +183,7 @@ const Dashboard: React.FC = () => {
       bgColor: 'bg-purple-50',
       textColor: 'text-purple-600',
       borderColor: 'border-purple-200',
+      path: '/tasks?status=en_curso',
     },
     {
       title: 'Completadas',
@@ -192,6 +196,7 @@ const Dashboard: React.FC = () => {
       bgColor: 'bg-green-50',
       textColor: 'text-green-600',
       borderColor: 'border-green-200',
+      path: '/tasks?status=completado',
     },
   ];
 
@@ -233,7 +238,7 @@ const Dashboard: React.FC = () => {
             <div
               key={index}
               className={`${stat.bgColor} border ${stat.borderColor} rounded-lg p-6 transition-transform hover:scale-105 cursor-pointer`}
-              onClick={() => navigate(index === 0 ? '/projects' : '/tasks')}
+              onClick={() => navigate(stat.path)}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -447,11 +452,10 @@ const Dashboard: React.FC = () => {
               <label className="text-sm font-medium text-gray-500">Estado</label>
               <div className="mt-1">
                 <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    user?.is_active
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user?.is_active
                       ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
-                  }`}
+                    }`}
                 >
                   {user?.is_active ? 'Activo' : 'Inactivo'}
                 </span>
